@@ -382,3 +382,12 @@ body.dark .quickstart-warning{background:#4b371e;color:#ffe1a4}
   .quickstart-note{display:none}
   .quickstart-mode .stage-hint{display:none}
 }
+
+/* Keep the completion icon text-sized: unstyled SVGs otherwise expand to 300px. */
+.quickstart-complete{align-items:center;min-height:38px;line-height:1.5}
+.quickstart-complete svg{width:15px;height:15px;min-width:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.quickstart-actions .button svg{width:13px;height:13px;min-width:13px;flex:none}
+@media(max-width:640px){
+  .quickstart-card{max-height:min(270px,55%)}
+  .quickstart-actions{flex-wrap:wrap}
+}
