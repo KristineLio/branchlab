@@ -182,7 +182,8 @@ export function normalizeBoard(raw) {
     return {id:e.id.slice(0,80),from:e.from,to:e.to,label:String(e.label||'').slice(0,40)};
   });
   return {id:typeof raw.id==='string'?raw.id.slice(0,80):uid('board'),
-    name:String(raw.name||'Imported flow').slice(0,80),template:'custom',updatedAt:Date.now(),nodes,edges};
+    name:String(raw.name||'Imported flow').slice(0,80),template:'custom',updatedAt:Date.now(),
+    quickStart:raw.quickStart===true,quickStartChecked:raw.quickStartChecked===true,nodes,edges};
 }
 function within(x,min,max) {
   const n=Number(x);
