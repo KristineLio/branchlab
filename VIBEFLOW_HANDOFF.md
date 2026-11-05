@@ -17,7 +17,7 @@
 
 > Import the complete public source project at https://github.com/KristineLio/branchlab . It is already implemented and tested. Serve its index.html as the app entry point; preserve styles.css, favicon.svg, src/app.js, src/graph.js, src/templates.js, and **src/pdf.js**. Preserve relative paths. The app uses native ES modules and requires a static HTTP host; no compilation, backend, authentication, API key or framework is necessary.
 >
-> Do not redesign or rebuild the editor from scratch. Do not remove core functionality or replace it with static placeholders. Keep localStorage persistence, graph editor, node dragging, connecting handles, one-click Yes/No decision branches, decision labels, Flow Inspector, Run Flow simulation, all templates, undo/redo, individual-node copy/paste, and JSON/SVG/PNG/**PDF** exports.
+> Do not redesign or rebuild the editor from scratch. Do not remove core functionality or replace it with static placeholders. Keep localStorage persistence, graph editor, node dragging, connecting handles, one-click Yes/No decision branches, decision labels, Flow Inspector, Run Flow simulation, all templates, undo/redo, multi-node copy/paste with preserved internal edges, and JSON/SVG/PNG/**PDF** exports.
 >
 > Check the published portal URL, not only the editor preview: inspect network requests and fix any 404s for ./styles.css and ./src/*.js assets. Avoid absolute paths such as /branchlab/; they can break VibeFlow snapshots. Verify the initial onboarding board has exactly six nodes and six links; Run Flow should complete the Yes branch; exports must download actual files.
 >
@@ -51,7 +51,7 @@ This judge demo is a working, editable board, not a scripted animation. It is in
 - [ ] Create a second board from the templates gallery.
 - [ ] Export SVG, PNG, PDF and JSON; open the PDF and verify the diagram is present, then import the JSON backup.
 - [ ] Choose a Decision and click **Create Yes / No routes**; confirm exactly two connected new outcomes.
-- [ ] Copy a selected node and paste it; confirm the new node is editable.
+- [ ] Shift-click two connected nodes, drag them together, then copy/paste the pair; confirm their connector is preserved and both copies are editable.
 - [ ] Use the Blank flow option and create an end-to-end diagram from scratch.
 - [ ] Open the published portal URL on desktop and mobile, check browser console for errors.
 - [ ] Confirm no visual branding from the paid tool was copied.
