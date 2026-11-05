@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f5">
+  <meta name="description" content="BranchLab — the visual thinking workspace that lets you design, inspect and run your decision flows.">
+  <title>BranchLab — Make ideas move.</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="src/app.js"></script>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4m0 1c4-3 8 3 13 0v11c-5 3-9-3-13 0"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="3"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="19" r="2"/><path d="M6 7v9a3 3 0 0 0 3 3h7M6 9a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V8"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 3h14v13l-5 5H5zM14 21v-5h5M8 8h8M8 12h5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m12 3 10 18H2zM12 9v5M12 18v.01"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 19V7m-5 5 5-5 5 5M4 7V3h16v4"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 0 12" transform="translate(0,-4)"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M20 12H10a6 6 0 0 0 0 12" transform="translate(0,-4)"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 1c0 2-3 2-3 5M12 18v.01"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15A8.5 8.5 0 0 1 9 4a8.5 8.5 0 1 0 11 11z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15l6-6M8 9l-2 2a4 4 0 0 0 6 6l2-2M16 15l2-2a4 4 0 1 0-6-6l-2 2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l5 5v15H6zM14 2v6h5M9 12h7M9 16h7"/></symbol>
+  </svg>
+
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="brand-name">branch<span>lab</span><span class="brand-dot">.</span></div>
+        <span class="brand-label">BETA</span>
+      </div>
+
+      <div class="workspace-label"><span class="workspace-avatar">C</span><div><strong>My workspace</strong><small>Personal · Free forever</small></div></div>
+
+      <div class="sidebar-section">
+        <div class="section-head"><span>MY BOARDS</span><button id="new-board-side" class="icon-button small" type="button" data-action="new-board" title="New board" aria-label="New board"><svg><use href="#i-plus"/></svg></button></div>
+        <div id="board-list" class="board-list" aria-label="My boards"></div>
+      </div>
+
+      <div class="sidebar-section tools-section">
+        <div class="section-head"><span>YOUR TOOLBOX</span><span class="small-hint">DRAG OR CLICK</span></div>
+        <div class="palette" id="palette">
+          <button class="palette-item" draggable="true" data-type="start" title="Add start node"><span class="shape-preview start-p"><svg><use href="#i-play"/></svg></span><span>Start <small>Entry point</small></span><svg class="palette-add"><use href="#i-plus"/></svg></button>
+          <button class="palette-item" draggable="true" data-type="process" title="Add step"><span class="shape-preview process-p"><svg><use href="#i-box"/></svg></span><span>Process <small>Action or task</small></span><svg class="palette-add"><use href="#i-plus"/></svg></button>
+          <button class="palette-item" draggable="true" data-type="decision" title="Add decision"><span class="shape-preview decision-p"><svg><use href="#i-branch"/></svg></span><span>Decision <small>Yes / No split</small></span><svg class="palette-add"><use href="#i-plus"/></svg></button>
+          <button class="palette-item" draggable="true" data-type="end" title="Add end node"><span class="shape-preview end-p"><svg><use href="#i-flag"/></svg></span><span>End <small>Final outcome</small></span><svg class="palette-add"><use href="#i-plus"/></svg></button>
+          <button class="palette-item" draggable="true" data-type="note" title="Add note"><span class="shape-preview note-p"><svg><use href="#i-note"/></svg></span><span>Sticky note <small>Additional context</small></span><svg class="palette-add"><use href="#i-plus"/></svg></button>
+        </div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="mini-tip"><span class="tip-icon"><svg><use href="#i-spark"/></svg></span><strong>Make something brilliant.</strong><p>Your ideas deserve more than another subscription.</p><button class="link-button" data-action="templates">Explore templates <span>↗</span></button></div>
+        <button class="sidebar-footer-btn" data-action="help"><svg><use href="#i-help"/></svg> How to use BranchLab <span>?</span></button>
+      </div>
+    </aside>
+
+    <main class="main-col">
+      <header class="topbar">
+        <div class="topbar-title"><div class="eyebrow">WORKSPACE <span>/</span> FLOW EDITOR</div><div class="title-line"><input id="board-title" aria-label="Board title" maxlength="80" value="User onboarding"><span id="save-indicator" class="save-indicator"><span></span> Saved locally</span></div></div>
+        <div class="topbar-actions">
+          <button class="button subtle hide-mobile" type="button" data-action="templates"><svg><use href="#i-grid"/></svg> Templates</button>
+          <button class="button subtle hide-mobile" type="button" data-action="import"><svg><use href="#i-upload"/></svg> Import</button>
+          <div class="separator"></div>
+          <button class="button outline" type="button" id="inspect-button" data-action="inspect"><svg><use href="#i-search"/></svg> Inspect <span class="shortcut">I</span></button>
+          <button class="button primary" type="button" id="run-button" data-action="run"><svg><use href="#i-play"/></svg> Run flow</button>
+          <button class="icon-button top-more" data-action="menu" aria-label="More options" title="More options"><svg><use href="#i-more"/></svg></button>
+        </div>
+      </header>
+      <div class="subbar"><div class="subbar-left"><span class="live-dot"></span><span id="node-summary">6 nodes · 6 connections</span><span class="mini-separator">·</span><span id="validity-summary">Checking flow...</span></div><div class="subbar-right"><span class="autosave-note"><svg><use href="#i-check"/></svg> Private by default</span></div></div>
+
+      <div class="editor-layout">
+        <div id="stage" class="stage" aria-label="Flowchart editing canvas" tabindex="0">
+          <div class="grid-backdrop" id="grid-backdrop"></div>
+          <div class="stage-hint"><span class="hint-circle"></span> YOUR CREATIVE CANVAS <span class="hint-dot">•</span> DRAG TO ARRANGE</div>
+          <div id="world" class="world">
+            <svg id="edge-layer" aria-label="Diagram connectors"><defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="context-stroke"/></marker><marker id="arrow-active" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="#6259ed"/></marker></defs><g id="edge-paths"></g><path id="preview-edge" class="preview-edge" d="" fill="none"/></svg>
+            <div id="nodes-layer"></div>
+          </div>
+          <div id="empty-state" class="empty-state" hidden><div class="empty-art"><div class="empty-node one">01</div><div class="empty-wire"></div><div class="empty-node two">02</div></div><h2>Every big idea starts somewhere.</h2><p>Drag a shape from your toolbox, or start with a ready-made flow.</p><div class="empty-ctas"><button class="button primary" data-action="add-first">Add a first step</button><button class="button outline" data-action="templates">Browse templates</button></div></div>
+
+          <div id="run-panel" class="run-panel" hidden aria-live="polite"></div>
+
+          <div class="stage-controls">
+            <div class="control-group"><button class="control-btn" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo"/></svg></button><button class="control-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg><use href="#i-redo"/></svg></button></div>
+            <div class="control-group"><button class="control-btn" data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><button class="control-btn zoom-label" data-action="fit" id="zoom-label" title="Fit canvas">100%</button><button class="control-btn" data-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><button class="control-btn" data-action="fit" title="Fit all"><svg><use href="#i-zoom"/></svg></button></div>
+          </div>
+          <div class="stage-bottom-tip"><span>TIP</span> Select a node to edit · Drag the <b>●</b> output handle to connect · <kbd>Space</kbd> + drag to pan</div>
+        </div>
+
+        <aside id="inspector" class="inspector">
+          <div class="inspector-heading"><div><span class="eyebrow">THE DETAILS</span><h2 id="inspector-heading">Inspector</h2></div><button class="icon-button small" data-action="close-inspector" title="Hide panel" aria-label="Hide inspector"><svg><use href="#i-x"/></svg></button></div>
+          <div class="inspector-tabs"><button data-tab="details" class="inspector-tab active">Properties</button><button data-tab="issues" class="inspector-tab">Flow check <span id="issue-count" class="issue-count">0</span></button></div>
+          <div id="details-tab" class="inspector-body"></div>
+          <div id="issues-tab" class="inspector-body" hidden></div>
+          <div class="inspector-footer"><div class="footer-symbol">✳</div><span>Thoughtfully designed to get out of your way.</span></div>
+        </aside>
+      </div>
+      <footer class="bottom-bar"><div><span class="status-spark">✳</span> <span id="bottom-status">Ready to create</span></div><div><span class="status-dot"></span> All changes stay in this browser <span class="bottom-divider"></span> v1.0</div></footer>
+    </main>
+  </div>
+
+  <div id="menu-popover" class="menu-popover" hidden>
+    <button data-action="export-svg"><svg><use href="#i-download"/></svg> Download SVG</button>
+    <button data-action="export-png"><svg><use href="#i-download"/></svg> Download PNG</button>
+    <button data-action="export-json"><svg><use href="#i-file"/></svg> Export JSON</button>
+    <button data-action="import"><svg><use href="#i-upload"/></svg> Import JSON</button>
+    <hr>
+    <button data-action="duplicate-board"><svg><use href="#i-copy"/></svg> Duplicate board</button>
+    <button data-action="delete-board" class="danger-menu"><svg><use href="#i-trash"/></svg> Delete board</button>
+    <hr>
+    <button data-action="toggle-theme"><svg><use href="#i-moon"/></svg> Toggle appearance</button>
+    <button data-action="help"><svg><use href="#i-help"/></svg> Keyboard shortcuts</button>
+  </div>
+
+  <dialog id="templates-dialog" class="app-dialog" aria-labelledby="templates-heading"><div class="dialog-top"><div><span class="eyebrow">START WITH A LITTLE MOMENTUM</span><h2 id="templates-heading">Find your starting point.</h2><p>Four ways to turn a thought into something tangible.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div id="template-grid" class="template-grid"></div><div class="dialog-foot">Every template is editable. No sign-up, no limits, no strings attached.</div></dialog>
+  <dialog id="help-dialog" class="app-dialog compact-dialog" aria-labelledby="help-heading"><div class="dialog-top"><div><span class="eyebrow">A BETTER WAY TO THINK</span><h2 id="help-heading">You're in control.</h2><p>Everything you need to move around BranchLab.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div class="help-grid"><span>Drag a node</span><span>Move it on the canvas</span><span>Drag output ● to input ●</span><span>Connect two nodes</span><span><kbd>Delete</kbd> or <kbd>Backspace</kbd></span><span>Delete selection</span><span><kbd>Ctrl</kbd> + <kbd>Z</kbd></span><span>Undo</span><span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></span><span>Redo</span><span><kbd>Space</kbd> + drag</span><span>Pan canvas</span><span>Mouse wheel / trackpad</span><span>Pan canvas</span><span><kbd>Ctrl</kbd> + wheel</span><span>Zoom canvas</span><span><kbd>I</kbd></span><span>Open Flow Inspector</span><span><kbd>Esc</kbd></span><span>Cancel tool / run</span></div></dialog>
+  <input id="import-input" type="file" accept=".json,application/json" hidden>
+  <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+</body>
+</html>
