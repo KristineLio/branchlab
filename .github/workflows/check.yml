@@ -12,3 +12,27 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium test dependency
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve app and test workflows
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 > /tmp/branchlab-server.log 2>&1 &
+          sleep 3
+          node tests/browser.smoke.mjs
+      - name: Save desktop and mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: branchlab-browser-screenshots
+          path: branchlab-*.png
+          if-no-files-found: ignore
