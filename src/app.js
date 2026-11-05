@@ -470,7 +470,8 @@ function renderInspector(){
   }
   const issues=$('issues-tab');
   if(check.issues.length){
-    issues.innerHTML='<div class="flow-score"><div><strong>Flow health</strong><p>'+check.errors+' errors · '+check.warnings+' suggestions</p></div><div class="score-number">'+Math.max(0,100-check.errors*20-check.warnings*8)+'</div></div>'+
+    const empty=!current().nodes.length;
+    issues.innerHTML='<div class="flow-score"><div><strong>Flow health</strong><p>'+(empty?'Not checked — add a Start step':check.errors+' errors · '+check.warnings+' suggestions')+'</p></div><div class="score-number">'+(empty?'—':Math.max(0,100-check.errors*20-check.warnings*8))+'</div></div>'+
       routeSummary+'<p style="font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 15px">Resolve these issues before sharing your flow.</p>';
     check.issues.forEach(issue=>{
       const row=document.createElement('div');row.className='issue-row';
