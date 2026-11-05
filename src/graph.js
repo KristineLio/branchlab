@@ -50,6 +50,40 @@ export function detectCycle(board, reachable) {
   for(const id of reachable) if(walk(id)) return true;
   return false;
 }
+/**
+ * Inspect named Yes/No outcomes from decisions reachable from the main Start.
+ * "Covered" means an outcome has a route that eventually reaches an End.
+ * This is a structural review, not proof that the business process is correct.
+ */
+export function analyzeOutcomes(board) {
+  const start=(board.nodes||[]).find(n=>n.type==='start');
+  const reachable=start?reachableFrom(board,start.id):new Set();
+  const decisions=(board.nodes||[]).filter(n=>n.type==='decision'&&reachable.has(n.id));
+  const ends=new Set((board.nodes||[]).filter(n=>n.type==='end').map(n=>n.id));
+  const reachesEnd=id=>{
+    const seen=new Set(),queue=[id];
+    for(let i=0;i<queue.length;i++){
+      const next=queue[i];
+      if(ends.has(next))return true;
+      if(seen.has(next))continue;
+      seen.add(next);
+      for(const edge of outgoing(board,next))if(!seen.has(edge.to))queue.push(edge.to);
+    }
+    return false;
+  };
+  const routes=[];
+  for(const decision of decisions){
+    for(const label of ['Yes','No']){
+      const edges=outgoing(board,decision.id).filter(e=>(e.label||'').trim().toLowerCase()===label.toLowerCase());
+      const covered=edges.length===1&&reachesEnd(edges[0].to);
+      routes.push({decisionId:decision.id,decisionTitle:decision.title,label,
+        to:edges.length===1?edges[0].to:null,covered,
+        reason:edges.length===0?'missing':edges.length>1?'duplicate':'no-finish'});
+    }
+  }
+  return {covered:routes.filter(r=>r.covered).length,total:routes.length,decisions:decisions.length,routes};
+}
+
 export function validateBoard(board) {
   const nodes = board.nodes || [], edges = board.edges || [];
   const issues = [];
@@ -80,6 +114,19 @@ export function validateBoard(board) {
   });
   if(starts.length && ends.length && !ends.some(n=>reachable.has(n.id)))
     add('error','No reachable finish','Connect a path from Start to an End node.');
+  const coverage=analyzeOutcomes({nodes,edges});
+  for(const route of coverage.routes){
+    if(route.to && !route.covered){
+      add('warning','Branch has no finish',
+        route.decisionTitle+' → '+route.label+' cannot reach an End step. Check this route before sharing.',
+        route.decisionId);
+    }else if(route.reason==='duplicate'){
+      add('warning','Duplicate branch label',
+        route.decisionTitle+' has more than one '+route.label+' route. Rename the extra connection.',
+        route.decisionId);
+    }
+  }
+
   if(starts.length && detectCycle({nodes,edges},reachable))
     add('warning','Loop detected','Your flow includes a cycle. Review it before running.');
   const errors = issues.filter(i=>i.severity==='error').length;
