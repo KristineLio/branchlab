@@ -112,7 +112,7 @@ function renderSummary(){
   $('validity-summary').textContent=!board.nodes.length?'Add your first step':issueTotal?issueTotal+' issue'+(issueTotal===1?'':'s')+' to review':audit.total?audit.covered+'/'+audit.total+' decision routes validated':'Flow looking good';
   $('issue-count').textContent=check.errors+check.warnings;
   $('bottom-status').textContent=state.demo?.boardId===state.activeId&&state.demo.step>=4?
-    'No decision route tested · Ready to export':
+    'Escalation route tested · Ready to export':
     state.connectFrom?'Select a destination node to connect':
     state.run?'Simulation is active':state.selected?'Node selected — edit in Properties':
     state.selectedEdge?'Connection selected':'Ready to create';
@@ -549,11 +549,16 @@ function takeEdge(id){
   run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();centerOnNode(edge.to);
   if(runCurrent()?.type==='end'){
     if(state.demo && state.demo.boardId===state.activeId){
-      state.demo.step=4;
-      render();
-      fitView(true);
-    }
-    notify('Flow completed! You reached the end.');
+      const noEdge=current().edges.find(e=>e.from==='c'&&e.label.trim().toLowerCase()==='no');
+      if(noEdge&&run.edges.includes(noEdge.id)){
+        state.demo.step=4;
+        render();fitView(true);
+        notify('Escalation path verified! The customer receives an update.');
+      }else{
+        renderExperience();renderRunPanel();fitView(true);
+        notify('Yes route completed. Restart and choose No to test the missing escalation.',true);
+      }
+    }else notify('Flow completed! You reached the end.');
   }
 }
 function stepForward(){
@@ -800,7 +805,7 @@ function startBlankBoard(){
 }
 
 function startChallenge(){
-  const b=makeBoard('challenge','Support escalation: missing outcome');
+  const b=makeBoard('challenge','Support escalation demo');
   state.boards.unshift(b);
   state.activeId=b.id;
   state.selected=null;
@@ -923,10 +928,13 @@ function renderExperience(){
     root.innerHTML=close+'<div class="demo-eyebrow">04 / 04 · TRACE THE OUTCOME</div>'+
       '<h2 class="demo-title">Follow the unresolved request.</h2>'+
       '<p class="demo-desc">Use Next step, choose No at “Resolved on first reply?”, then follow Escalate to specialist to Update the customer.</p>'+
-      stats+progress+'<div class="demo-buttons"><button class="button outline" data-action="stop-run">Pause & edit</button></div>';
+      stats+progress+'<div class="demo-buttons">'+
+      (runCurrent()?.type==='end'?
+      '<button class="button primary" data-action="run-challenge">'+icon('play')+' Restart · choose No</button>':
+      '<button class="button outline" data-action="stop-run">Pause & edit</button>')+'</div>';
   }else{
     root.innerHTML=close+'<div class="demo-eyebrow">MISSION COMPLETE · USE IT FOR REAL WORK</div>'+
-      '<h2 class="demo-title">No customer gets lost in the flow.</h2>'+
+      '<h2 class="demo-title">You caught the missing escalation.</h2>'+
       '<p class="demo-desc">You exposed an unhandled support request, fixed both missing links, and tested the escalation path. Use the same checks on your own processes.</p>'+
       stats+progress+'<div class="demo-success">✓ Inspector clean · Both outcomes reach End</div>'+
       '<div class="demo-buttons"><button class="button primary" data-action="export-pdf">'+icon('download')+' Export as PDF</button>'+
