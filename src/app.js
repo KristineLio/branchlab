@@ -80,8 +80,10 @@ function render(){
   renderBoards();renderStage();renderInspector();renderSummary();renderExperience();
   document.querySelector('.inspector').hidden=!state.inspectorOpen;
   document.body.classList.toggle('dark',state.theme==='dark');
-  $('run-button').innerHTML=icon('play')+(state.run?' Running…':' Run flow');
-  $('run-button').classList.toggle('is-running',!!state.run);
+  const demoFinished=state.demo?.boardId===state.activeId&&state.demo.step>=4;
+  $('run-button').innerHTML=icon(demoFinished?'check':'play')+
+    (demoFinished?' Run again':state.run?' Running…':' Run flow');
+  $('run-button').classList.toggle('is-running',!!state.run&&!demoFinished);
 }
 function renderBoards(){
   const list=$('board-list');list.replaceChildren();
@@ -108,7 +110,11 @@ function renderSummary(){
   const issueTotal=check.issues.filter(i=>i.severity!=='info').length;
   $('validity-summary').textContent=!board.nodes.length?'Add your first step':issueTotal?issueTotal+' issue'+(issueTotal===1?'':'s')+' to review':audit.total?audit.covered+'/'+audit.total+' decision routes validated':'Flow looking good';
   $('issue-count').textContent=check.errors+check.warnings;
-  $('bottom-status').textContent=state.connectFrom?'Select a destination node to connect':state.run?'Simulation is active':state.selected?'Node selected — edit in Properties':state.selectedEdge?'Connection selected':'Ready to create';
+  $('bottom-status').textContent=state.demo?.boardId===state.activeId&&state.demo.step>=4?
+    'No decision route tested · Ready to export':
+    state.connectFrom?'Select a destination node to connect':
+    state.run?'Simulation is active':state.selected?'Node selected — edit in Properties':
+    state.selectedEdge?'Connection selected':'Ready to create';
   $('zoom-label').textContent=Math.round(state.view.scale*100)+'%';
 }
 function applyTransform(){
@@ -516,6 +522,7 @@ function showTemplates(){
   $('templates-dialog').showModal();
 }
 function startRun(){
+  if(state.demo?.boardId===state.activeId&&state.demo.step>=4)state.demo.step=3;
   const b=current(),start=b.nodes.find(n=>n.type==='start');
   if(!start){state.tab='issues';state.inspectorOpen=true;render();return notify('Add a Start node before running.',true);}
   state.run={path:[start.id],edges:[]};state.connectFrom=null;state.selected=null;state.selectedEdge=null;
@@ -530,8 +537,7 @@ function takeEdge(id){
   if(runCurrent()?.type==='end'){
     if(state.demo && state.demo.boardId===state.activeId){
       state.demo.step=4;
-      renderExperience();
-      renderRunPanel();
+      render();
       fitView(true);
     }
     notify('Flow completed! You reached the end.');
