@@ -44,6 +44,38 @@ try{
   assert.equal(await page.getByText('Research and review',{exact:true}).count()>0,true);
   console.log('PASS browser autosave survives reload');
 
+  const sourcePort=page.locator('.node[data-id="a"] .node-port.out');
+  await sourcePort.click();
+  await page.locator('.node').filter({hasText:'Research and review'}).click();
+  assert.equal(await page.locator('#edge-paths g').count(),7,'Connecting a new node adds a real graph edge');
+  console.log('PASS graph connections created by clicking output and destination');
+
+  const dragNode=page.locator('.node[data-id="a"]');
+  const oldStyle=await dragNode.getAttribute('style');
+  const bb=await dragNode.boundingBox();
+  await page.mouse.move(bb.x+80,bb.y+65);
+  await page.mouse.down();
+  await page.mouse.move(bb.x+120,bb.y+95,{steps:6});
+  await page.mouse.up();
+  const newStyle=await dragNode.getAttribute('style');
+  assert.notEqual(oldStyle,newStyle,'Dragging should update actual diagram position');
+  console.log('PASS pointer-based node dragging');
+
+  await page.locator('[data-action="undo"]').click();
+  const undoStyle=await dragNode.getAttribute('style');
+  assert.notEqual(undoStyle,newStyle,'Undo restores previous layout');
+  await page.locator('[data-action="redo"]').click();
+  const redoStyle=await dragNode.getAttribute('style');
+  assert.equal(redoStyle,newStyle,'Redo reapplies layout');
+  console.log('PASS undo/redo for node movement');
+
+  await page.evaluate(()=>document.querySelector('#menu-popover').hidden=false);
+  const pngEvent=page.waitForEvent('download',{timeout:15000});
+  await page.locator('[data-action="export-png"]').click();
+  const pngDownload=await pngEvent;
+  assert.ok(pngDownload.suggestedFilename().endsWith('.png'));
+  console.log('PASS real PNG export');
+
   await page.evaluate(()=>document.querySelector('#menu-popover').hidden=false);
   const downloadEvent=page.waitForEvent('download',{timeout:15000});
   await page.locator('[data-action="export-svg"]').click();
