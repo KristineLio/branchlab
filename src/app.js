@@ -114,6 +114,7 @@ function applyTransform(){
 function renderStage(){
   const board=current();
   $('stage').classList.toggle('is-connecting',!!state.connectFrom);
+  $('stage').classList.toggle('is-running',!!state.run);
   $('connect-hint').hidden=!state.connectFrom;
   if(!state.connectFrom)$('preview-edge').setAttribute('d','');
   $('empty-state').hidden=board.nodes.length>0;
@@ -217,6 +218,7 @@ function nodePointerDown(event,id){
 }
 function selectNode(id){
   state.selected=id;state.selectedEdge=null;
+  state.tab='details';
   if(!state.inspectorOpen)state.inspectorOpen=true;
   render();
 }
@@ -301,6 +303,16 @@ function fitView(overview=false){
   }
   const bounds=fitBounds(b.nodes,65);
   const zoom=Math.max(.28,Math.min(1.14,(rect.width-88)/bounds.width,(rect.height-115)/bounds.height));
+  if(!overview && zoom<.70 && b.nodes.length){
+    // An entirely visible 1,600px diagram becomes unreadably small in a real editor.
+    // Begin at a readable working zoom; the Fit All control still shows the overview.
+    const first=b.nodes.find(n=>n.type==='start')||b.nodes[0];
+    const readable=Math.min(.8,Math.max(.68,rect.width/1050));
+    state.view.scale=readable;
+    state.view.x=46-first.x*readable;
+    state.view.y=rect.height*.53-(first.y+NODE_H/2)*readable;
+    applyTransform();return;
+  }
   state.view.scale=zoom;
   state.view.x=(rect.width-bounds.width*zoom)/2-bounds.minX*zoom;
   state.view.y=(rect.height-bounds.height*zoom)/2-bounds.minY*zoom;
@@ -395,14 +407,14 @@ function startRun(){
   const b=current(),start=b.nodes.find(n=>n.type==='start');
   if(!start){state.tab='issues';state.inspectorOpen=true;render();return notify('Add a Start node before running.',true);}
   state.run={path:[start.id],edges:[]};state.connectFrom=null;state.selected=null;state.selectedEdge=null;
-  render();notify('Flow simulation started. Follow each step.');
+  render();centerOnNode(start.id);notify('Flow simulation started. Follow each step.');
 }
 function runCurrent(){return state.run?byId(current(),state.run.path[state.run.path.length-1]):null;}
 function takeEdge(id){
   const run=state.run,node=runCurrent();if(!run||!node)return;
   const edge=outgoing(current(),node.id).find(e=>e.id===id);if(!edge)return;
   if(run.path.length>=70)return notify('Simulation stopped after 70 steps to prevent an endless loop.',true);
-  run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();
+  run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();centerOnNode(edge.to);
   if(runCurrent()?.type==='end'){
     if(state.demo && state.demo.boardId===state.activeId){state.demo.step=4;renderExperience();}
     notify('Flow completed! You reached the end.');
@@ -418,9 +430,9 @@ function stepForward(){
 }
 function stepBack(){
   if(!state.run||state.run.path.length===1)return;
-  state.run.path.pop();state.run.edges.pop();renderStage();renderSummary();
+  state.run.path.pop();state.run.edges.pop();renderStage();renderSummary();centerOnNode(runCurrent()?.id);
 }
-function stopRun(){state.run=null;render();}
+function stopRun(){state.run=null;render();fitView();}
 function renderRunPanel(){
   const panel=$('run-panel');if(!state.run){panel.hidden=true;return;}
   const node=runCurrent();if(!node){panel.hidden=true;return;}
