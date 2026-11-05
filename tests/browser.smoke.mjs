@@ -94,12 +94,14 @@ try{
   // Judge's 45-second journey: broken graph → inspector → repair → decision simulation.
   await page.setViewportSize({width:1440,height:900});
   await page.locator('#experience-card [data-action="challenge"]').click();
+  await page.screenshot({path:'branchlab-challenge.png',fullPage:true});
   assert.equal(await page.locator('#nodes-layer .node').count(),6);
   assert.equal(await page.locator('#edge-paths g').count(),4);
   assert.equal(await page.locator('#issue-count').innerText(),'3');
   await page.locator('#experience-card [data-action="inspect-challenge"]').click();
   assert.ok(await page.locator('#issues-tab .issue-item').count()>=3);
   await page.locator('#experience-card [data-action="repair-challenge"]').click();
+  await page.screenshot({path:'branchlab-repaired.png',fullPage:true});
   assert.equal(await page.locator('#edge-paths g').count(),6);
   assert.equal(await page.locator('#issue-count').innerText(),'0');
   await page.locator('#experience-card [data-action="run-challenge"]').click();
@@ -111,20 +113,17 @@ try{
   await page.locator('#run-panel [data-action="run-next"]').click();
   assert.equal(await page.locator('.run-title').innerText(),'Launch confirmed');
   assert.ok(await page.getByText('You just debugged a decision.').count());
+  await page.screenshot({path:'branchlab-complete.png',fullPage:true});
   await page.locator('#run-panel [data-action="stop-run"]').last().click();
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
   console.log('PASS complete first-minute product demonstration from bug to working flow');
 
-  const hitDebug=await page.evaluate(()=>{
+  const hitNode=await page.evaluate(()=>{
     const n=document.querySelector('.node[data-id="b"]');
-    const r=n.getBoundingClientRect();
-    const x=r.x+r.width/2,y=r.y+r.height/2;
-    return {rect:{x:r.x,y:r.y,w:r.width,h:r.height},point:{x,y},
-      hit:document.elementFromPoint(x,y)?.outerHTML?.slice(0,180),
-      view:window.BranchLabDebug.state().view,
-      stage:document.querySelector('#stage').getBoundingClientRect().toJSON()};
+    const rect=n.getBoundingClientRect();
+    return document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('.node')?.dataset.id;
   });
-  console.log('DRAG/CLICK DEBUG',JSON.stringify(hitDebug));
+  assert.equal(hitNode,'b','An existing node should be directly clickable after the tour');
   await page.locator('.node[data-id="b"]').click();
   await page.locator('#details-tab [data-action="add-next"]').click();
   assert.equal(await page.locator('#nodes-layer .node').count(),7);
