@@ -330,3 +330,55 @@ body.dark .demo-warning{background:#453521;color:#ffe2a8}
   .guided-demo .experience-card .demo-note{display:none}
   .guided-demo .stage-hint{display:none}
 }
+
+/* First useful diagram in six guided, editable actions. This overlay stays in
+ * view without hiding the canvas controls or adding another navigation mode. */
+.quickstart-card{
+  position:absolute;z-index:5;top:14px;left:18px;
+  width:min(320px,calc(100% - 36px));max-height:min(325px,52%);
+  overflow:auto;background:var(--panel);color:var(--text);
+  border:1px solid var(--line-strong);border-radius:14px;
+  padding:14px 16px;box-shadow:0 16px 48px #20294322;
+}
+.quickstart-card[hidden]{display:none!important}
+.quickstart-mode #empty-state{display:none!important}
+.quickstart-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.quickstart-top>span{display:flex;align-items:center;gap:6px;color:var(--accent);
+  font-size:9px;letter-spacing:.7px;font-weight:850}
+.quickstart-top svg{height:13px;width:13px}
+.quickstart-top button{border:0;border-radius:5px;background:transparent;color:var(--muted);
+  display:grid;place-items:center;padding:5px;cursor:pointer}
+.quickstart-top button:hover{background:var(--panel-soft);color:var(--text)}
+.quickstart-meter{height:4px;overflow:hidden;border-radius:9px;background:var(--line);margin:9px 0 12px}
+.quickstart-meter span{display:block;height:100%;background:var(--accent);transition:width .2s}
+.quickstart-card h2{font:800 16px/1.3 Manrope,Arial,sans-serif;letter-spacing:-.5px;margin:0 0 6px}
+.quickstart-card p{font-size:10px;line-height:1.6;color:var(--muted);margin:0 0 11px}
+.quickstart-label,.quickstart-branch-fields label{display:block;color:var(--text-secondary);
+  font-size:9px;font-weight:800;letter-spacing:.25px;margin-bottom:6px}
+.quickstart-field{display:block;width:100%;min-width:0;margin:6px 0 10px;padding:8px 9px;
+  font-size:12px;color:var(--text);background:var(--panel-soft);
+  border:1px solid var(--line-strong);border-radius:7px}
+.quickstart-field:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.quickstart-branch-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quickstart-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.quickstart-actions .button{height:33px;font-size:10px;padding:0 10px}
+.quickstart-actions .button.primary{flex:1;white-space:nowrap;min-width:0}
+.quickstart-actions .button.subtle{font-size:9px}
+.quickstart-note{display:block;margin-top:7px;font-size:9px;color:var(--muted);line-height:1.5}
+.quickstart-complete{border-radius:8px;background:#eaf7f0;color:#246c52;
+  padding:9px 10px;margin:9px 0;display:flex;gap:6px;align-items:center;font-size:10px;font-weight:800}
+body.dark .quickstart-complete{background:#203e32;color:#c4f6dd}
+.quickstart-warning{padding:10px;border-radius:8px;margin:8px 0;background:#fff2e1;
+  color:#94642b;font-size:10px;font-weight:800}
+body.dark .quickstart-warning{background:#4b371e;color:#ffe1a4}
+.quickstart-mode .stage-hint{top:335px}
+@media(max-width:640px){
+  .quickstart-card{top:7px;left:7px;width:calc(100% - 14px);
+    max-height:min(226px,48%);padding:10px 11px}
+  .quickstart-card h2{font-size:13px}
+  .quickstart-card p{font-size:9px}
+  .quickstart-field{font-size:11px;padding:6px 7px;margin:4px 0 7px}
+  .quickstart-actions .button{font-size:9px;height:31px}
+  .quickstart-note{display:none}
+  .quickstart-mode .stage-hint{display:none}
+}
