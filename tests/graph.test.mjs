@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {makeBoard,TEMPLATES} from '../src/templates.js';
-import {validateBoard,normalizeBoard,reachableFrom,detectCycle,fitBounds,connected,clone} from '../src/graph.js';
+import {validateBoard,normalizeBoard,reachableFrom,detectCycle,fitBounds,connected,clone,autoArrange} from '../src/graph.js';
 
 test('Three showcase templates and a blank canvas exist',()=>{
   assert.ok(TEMPLATES.length>=4);
   assert.ok(TEMPLATES.some(t=>t.key==='blank'));
 });
 test('All shipped workflows are executable and pass structural validation',()=>{
-  for(const template of TEMPLATES.filter(t=>t.nodes.length)){
+  for(const template of TEMPLATES.filter(t=>t.nodes.length && t.key!=='challenge')){
     const b=makeBoard(template.key);
     const result=validateBoard(b);
     assert.equal(result.errors,0,template.key+': '+JSON.stringify(result.issues));
@@ -75,4 +75,42 @@ test('Boards and nodes are deeply cloneable for undo/redo',()=>{
   const a=makeBoard('approval'),b=clone(a);
   b.nodes[0].title='Changed';assert.notEqual(a.nodes[0].title,b.nodes[0].title);
   assert.notEqual(makeBoard('approval').id,a.id);
+});
+
+
+test('The diagnostic challenge begins with real, fixable graph errors',()=>{
+  const b=makeBoard('challenge');
+  assert.equal(b.nodes.length,6);
+  assert.equal(b.edges.length,4);
+  const result=validateBoard(b);
+  assert.ok(result.issues.some(i=>i.title==='Incomplete decision'));
+  assert.ok(result.issues.some(i=>i.title==='Unreachable step'));
+  assert.ok(result.issues.some(i=>i.title==='Dead-end step'));
+  b.edges.push({id:'ce',from:'c',to:'e',label:'No'});
+  b.edges.push({id:'ef',from:'e',to:'f',label:''});
+  const repaired=validateBoard(b);
+  assert.equal(repaired.errors,0);
+  assert.equal(repaired.warnings,0);
+});
+
+test('Auto-arrange puts connected steps in ordered columns without changing data',()=>{
+  const b=makeBoard('signup');
+  const original=clone(b);
+  const arranged=autoArrange(b);
+  assert.equal(arranged.length,b.nodes.length);
+  assert.equal(arranged.find(n=>n.id==='a').x,80);
+  assert.ok(arranged.find(n=>n.id==='f').x>arranged.find(n=>n.id==='c').x);
+  assert.notEqual(arranged.find(n=>n.id==='e').y,arranged.find(n=>n.id==='d').y);
+  assert.deepEqual(b,original,'pure layout must not mutate undo snapshots');
+  assert.equal(validateBoard({...b,nodes:arranged}).errors,0);
+});
+
+test('Auto-arrange terminates for cyclic graphs and handles disconnected nodes',()=>{
+  const b=makeBoard('signup');
+  b.edges.push({id:'loop',from:'d',to:'b',label:''});
+  b.nodes.push({id:'orphan',type:'note',x:2000,y:1500,title:'FYI',detail:''});
+  const laidOut=autoArrange(b);
+  assert.equal(laidOut.length,b.nodes.length);
+  assert.ok(laidOut.every(n=>Number.isFinite(n.x)&&Number.isFinite(n.y)));
+  assert.ok(laidOut.find(n=>n.id==='orphan').x>laidOut.find(n=>n.id==='f').x);
 });
