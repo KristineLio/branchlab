@@ -135,10 +135,18 @@ try{
   await page.locator('#run-panel [data-action="run-next"]').click();
   await page.locator('#run-panel [data-action="run-next"]').click();
   assert.equal(await page.locator('.run-title').innerText(),'Resolved on first reply?');
+  await page.locator('#run-panel [data-action="choose-edge"]').filter({hasText:'Yes'}).click();
+  await page.locator('#run-panel [data-action="run-next"]').click();
+  assert.equal(await page.evaluate(()=>window.BranchLabDebug.state().demo.step),3,
+    'The Yes branch must not falsely complete a challenge about missing No escalation');
+  await page.locator('#experience-card [data-action="run-challenge"]').click();
+  await page.locator('#run-panel [data-action="run-next"]').click();
+  await page.locator('#run-panel [data-action="run-next"]').click();
+  assert.equal(await page.locator('.run-title').innerText(),'Resolved on first reply?');
   await page.locator('#run-panel [data-action="choose-edge"]').filter({hasText:'No'}).click();
   assert.equal(await page.locator('.run-title').innerText(),'Escalate to specialist');
   await page.locator('#run-panel [data-action="run-next"]').click();
-  assert.ok(await page.getByText('No customer gets lost in the flow.').count(),'The completion screen explains the real support benefit');
+  assert.ok(await page.getByText('You caught the missing escalation.').count(),'The completion screen explains the real support benefit');
   assert.equal(await page.locator('#run-panel').isHidden(),true,'Guided completion collapses the simulation panel to reveal the full diagram');
   assert.equal((await page.evaluate(()=>window.BranchLabDebug.state().run.path)).at(-1),'f','Simulation truly ended on the graph End node');
   await page.screenshot({path:'branchlab-complete.png',fullPage:true});
@@ -313,6 +321,9 @@ try{
   const quickPanel=await fresh.locator('#quickstart-card').boundingBox();
   const stage=await fresh.locator('#stage').boundingBox();
   assert.ok(quickPanel.width<=stage.width+1,'Mobile guide fits inside viewport');
+  const iconSize=await fresh.locator('#quickstart-card .quickstart-complete svg').boundingBox();
+  assert.ok(iconSize.width<=18&&iconSize.height<=18,'Success SVG must stay icon-sized, not hide mobile actions');
+  assert.ok(await fresh.locator('#quickstart-card [data-action="run"]').isVisible(),'Run action remains accessible on mobile');
   await fresh.screenshot({path:'branchlab-guided-blank-mobile.png',fullPage:true});
   assert.deepEqual(beginnerErrors,[],'No errors in beginner journey');
   await beginner.close();
