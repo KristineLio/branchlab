@@ -15,9 +15,9 @@
 
 ### Paste this prompt into VibeFlow
 
-> Import the complete public source project at https://github.com/KristineLio/branchlab . It is already implemented and tested. Serve its index.html as the app entry point; preserve styles.css, favicon.svg, src/app.js, src/graph.js, and src/templates.js. Preserve relative paths. The app uses native ES modules and requires a static HTTP host; no compilation, backend, authentication, API key or framework is necessary.
+> Import the complete public source project at https://github.com/KristineLio/branchlab . It is already implemented and tested. Serve its index.html as the app entry point; preserve styles.css, favicon.svg, src/app.js, src/graph.js, src/templates.js, and **src/pdf.js**. Preserve relative paths. The app uses native ES modules and requires a static HTTP host; no compilation, backend, authentication, API key or framework is necessary.
 >
-> Do not redesign or rebuild the editor from scratch. Do not remove core functionality or replace it with static placeholders. Keep localStorage persistence, graph editor, node dragging, connecting handles, decision labels, Flow Inspector, Run Flow simulation, templates, undo/redo, and JSON/SVG/PNG exports.
+> Do not redesign or rebuild the editor from scratch. Do not remove core functionality or replace it with static placeholders. Keep localStorage persistence, graph editor, node dragging, connecting handles, one-click Yes/No decision branches, decision labels, Flow Inspector, Run Flow simulation, all templates, undo/redo, individual-node copy/paste, and JSON/SVG/PNG/**PDF** exports.
 >
 > Check the published portal URL, not only the editor preview: inspect network requests and fix any 404s for ./styles.css and ./src/*.js assets. Avoid absolute paths such as /branchlab/; they can break VibeFlow snapshots. Verify the initial onboarding board has exactly six nodes and six links; Run Flow should complete the Yes branch; exports must download actual files.
 >
@@ -26,7 +26,7 @@
 ## Judge's first 45 seconds
 
 1. Open the actual VibeFlow public URL in a clean private browsing tab.
-2. A guided product card should appear on the canvas: **Try the interactive demo**.
+2. A guided product card should offer three choices: **Blank flow**, **Use template**, and **Try interactive demo**.
 3. Click to open **The broken launch** (six nodes, four edges).
 4. Click **Find the problems**. The inspector flags an incomplete decision, a dead end, and an unreachable step.
 5. Click **Connect the broken paths**. Two real graph connections are created; health becomes 100, with no issues.
@@ -49,7 +49,10 @@ This judge demo is a working, editable board, not a scripted animation. It is in
 - [ ] Select a node → **Add next step** creates a new editable node plus a connector.
 - [ ] Press `L` on a selected node to connect, and `Shift+A` to auto-arrange.
 - [ ] Create a second board from the templates gallery.
-- [ ] Export SVG, PNG and JSON; import the JSON backup.
+- [ ] Export SVG, PNG, PDF and JSON; open the PDF and verify the diagram is present, then import the JSON backup.
+- [ ] Choose a Decision and click **Create Yes / No routes**; confirm exactly two connected new outcomes.
+- [ ] Copy a selected node and paste it; confirm the new node is editable.
+- [ ] Use the Blank flow option and create an end-to-end diagram from scratch.
 - [ ] Open the published portal URL on desktop and mobile, check browser console for errors.
 - [ ] Confirm no visual branding from the paid tool was copied.
 
@@ -57,7 +60,7 @@ This judge demo is a working, editable board, not a scripted animation. It is in
 
 **BranchLab** — Make ideas move.  
 **Replaces:** Whimsical Pro — $12/month on the monthly Pro plan (verify current price before posting).  
-**Description:** A visual flowchart editor that goes beyond drawing: build real diagrams, instantly inspect broken paths and incomplete decisions, **repair the flow**, test each Yes/No route in a live simulation, auto-arrange nodes, and export SVG, PNG or JSON. Try the 45-second interactive challenge! No signup, no watermark, and your data stays in your browser.  
+**Description:** A visual flowchart editor that goes beyond drawing: build real diagrams, instantly inspect broken paths and incomplete decisions, **repair the flow**, test each Yes/No route in a live simulation, auto-arrange nodes, and export SVG, PNG, print-ready PDF or JSON. Try the 45-second interactive challenge! No signup, no watermark, and your data stays in your browser.  
 **Live app:** [insert working VibeFlow public URL]
 
 **Important:** Submitting the GitHub repository URL alone is not enough. The rules specifically require a functioning VibeFlow live link.
