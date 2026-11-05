@@ -233,7 +233,7 @@ try{
   await quick.locator('.palette-item[data-type="decision"]').click();
   const addedDecision=(await quick.evaluate(()=>window.BranchLabDebug.getBoard())).nodes.at(-1).id;
   await quick.locator('#inspect-button').click();
-  const fix=quick.locator('#issues-tab [data-action="quick-fix"][data-fix="branches"]').first();
+  const fix=quick.locator('#issues-tab [data-action="quick-fix"][data-fix="branches"][data-node="'+addedDecision+'"]');
   await fix.click();
   const quickBoard=await quick.evaluate(()=>window.BranchLabDebug.getBoard());
   assert.deepEqual(quickBoard.edges.filter(e=>e.from===addedDecision).map(e=>e.label),['Yes','No'],
