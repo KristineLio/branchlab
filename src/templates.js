@@ -130,8 +130,8 @@ export const TEMPLATES = [
       {id:'b',type:'process',x:390,y:220,title:'Review requirements',detail:'The team checks the scope and risks.'},
       {id:'c',type:'decision',x:700,y:220,title:'Ready to ship?',detail:'Two answers should lead somewhere.'},
       {id:'d',type:'process',x:1030,y:60,title:'Approve release',detail:'The green-light path is already working.'},
-      {id:'e',type:'process',x:1030,y:390,title:'Fix the blockers',detail:'This route is missing its connections.'},
-      {id:'f',type:'end',x:1360,y:220,title:'Launch confirmed',detail:'Both outcomes lead to a decision.'}
+      {id:'e',type:'process',x:1030,y:390,title:'Fix the blockers',detail:'Resolve risks and remove the issues holding up the release.'},
+      {id:'f',type:'end',x:1360,y:220,title:'Launch confirmed',detail:'Record the release decision and communicate next steps.'}
     ],
     edges: [
       {id:'ab',from:'a',to:'b',label:''},
