@@ -115,6 +115,16 @@ try{
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
   console.log('PASS complete first-minute product demonstration from bug to working flow');
 
+  const hitDebug=await page.evaluate(()=>{
+    const n=document.querySelector('.node[data-id="b"]');
+    const r=n.getBoundingClientRect();
+    const x=r.x+r.width/2,y=r.y+r.height/2;
+    return {rect:{x:r.x,y:r.y,w:r.width,h:r.height},point:{x,y},
+      hit:document.elementFromPoint(x,y)?.outerHTML?.slice(0,180),
+      view:window.BranchLabDebug.state().view,
+      stage:document.querySelector('#stage').getBoundingClientRect().toJSON()};
+  });
+  console.log('DRAG/CLICK DEBUG',JSON.stringify(hitDebug));
   await page.locator('.node[data-id="b"]').click();
   await page.locator('#details-tab [data-action="add-next"]').click();
   assert.equal(await page.locator('#nodes-layer .node').count(),7);
