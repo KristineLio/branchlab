@@ -1,5 +1,6 @@
 import {TEMPLATES,makeBoard} from './templates.js';
-import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange} from './graph.js';
+import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange,addDecisionBranches} from './graph.js';
+import {jpegToPdf} from './pdf.js';
 
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
@@ -15,6 +16,7 @@ let state={
 };
 let move=null,spaceHeld=false,saveTimer=null,toastTimer=null;
 const stacks=new Map();
+let nodeClipboard=null;
 
 function current(){return state.boards.find(b=>b.id===state.activeId);}
 function stack(){if(!stacks.has(state.activeId))stacks.set(state.activeId,{undo:[],redo:[]});return stacks.get(state.activeId);}
@@ -133,7 +135,7 @@ function renderStage(){
     el.innerHTML='<div class="node-top"><div class="node-badge">'+icon(symbol)+'</div><span class="node-tag">'+esc(NODE_TYPES[node.type].label)+'</span><span class="node-index">'+String(index+1).padStart(2,'0')+'</span></div>'+
       '<div class="node-title">'+esc(node.title)+'</div><div class="node-subtitle">'+esc(node.detail||'Add a description…')+'</div>'+
       portIn+portOut+
-      '<div class="node-node-actions"><button type="button" data-node-action="duplicate" title="Duplicate">'+icon('copy')+'</button><button type="button" data-node-action="delete" title="Delete">'+icon('trash')+'</button></div>';
+      '<div class="node-node-actions">'+(node.type==='decision'?'<button type="button" data-node-action="branches" title="Create Yes and No routes">'+icon('branch')+'</button>':node.type==='start'||node.type==='process'?'<button type="button" data-node-action="next" title="Add connected step">'+icon('plus')+'</button>':'')+'<button type="button" data-node-action="duplicate" title="Duplicate">'+icon('copy')+'</button><button type="button" data-node-action="delete" title="Delete">'+icon('trash')+'</button></div>';
     el.addEventListener('pointerdown',e=>nodePointerDown(e,node.id));
     el.addEventListener('dblclick',()=>{selectNode(node.id);const field=$('node-title-field');if(field){field.focus();field.select();}});
     el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.stopPropagation();selectNode(node.id);}});
@@ -192,6 +194,8 @@ function nodePointerDown(event,id){
     event.stopPropagation();event.preventDefault();
     selectNode(id);
     if(button.dataset.nodeAction==='duplicate')duplicateNode();
+    else if(button.dataset.nodeAction==='next')addNextStep();
+    else if(button.dataset.nodeAction==='branches')addDecisionPaths();
     else deleteSelection();
     return;
   }
@@ -255,6 +259,23 @@ function addNextStep(){
   notify('Next step added and connected. Give it a name.');
 }
 
+function addDecisionPaths(){
+  const decision=byId(current(),state.selected);
+  if(!decision || decision.type!=='decision')return notify('Choose a Decision step first.',true);
+  const existing=outgoing(current(),decision.id);
+  const labels=new Set(existing.map(e=>(e.label||'').trim().toLowerCase()));
+  if((existing.length>=2 && (!labels.has('yes')||!labels.has('no'))) ||
+     (labels.has('yes') && labels.has('no')))
+    return notify(existing.length>=2&&!labels.has('no')||existing.length>=2&&!labels.has('yes')?
+      'Rename existing routes Yes and No before adding more.':'Both decision routes already exist.',true);
+  record();
+  const result=addDecisionBranches(current(),decision.id);
+  if(!result.created.length){stack().undo.pop();return notify(result.reason||'No new branches needed.',true);}
+  state.run=null;state.connectFrom=null;
+  queueSave();render();fitView(true);
+  notify(result.created.length===2?'Created connected Yes and No routes. Name each next step.':'Created the missing decision route.');
+}
+
 function screenToWorld(clientX,clientY){
   const rect=$('stage').getBoundingClientRect();
   return{x:(clientX-rect.left-state.view.x)/state.view.scale,y:(clientY-rect.top-state.view.y)/state.view.scale};
@@ -292,6 +313,26 @@ function duplicateNode(){
   record();const copy={...node,id:uid('node'),x:node.x+42,y:node.y+155,title:node.title+' copy'};
   current().nodes.push(copy);state.selected=copy.id;queueSave();render();notify('Node duplicated.');
 }
+function copyNode(){
+  const node=byId(current(),state.selected);
+  if(!node)return notify('Select a node to copy first.',true);
+  nodeClipboard=clone(node);
+  notify('Node copied. Press Ctrl/Cmd + V to paste a new one.');
+}
+function pasteNode(){
+  if(!nodeClipboard)return notify('Copy a node first with Ctrl/Cmd + C.',true);
+  const b=current();
+  let x=nodeClipboard.x+55,y=nodeClipboard.y+155,tries=0;
+  while(tries<60 && b.nodes.some(n=>Math.abs(n.x-x)<NODE_W+20&&Math.abs(n.y-y)<NODE_H+20)){
+    y+=160;tries++;
+  }
+  record();
+  const node={...clone(nodeClipboard),id:uid('node'),x,y};
+  b.nodes.push(node);state.selected=node.id;state.selectedEdge=null;state.run=null;
+  state.tab='details';state.inspectorOpen=true;
+  queueSave();render();centerOnNode(node.id);notify('Copied node pasted. Connect it when ready.');
+}
+
 function fitView(overview=false){
   const rect=$('stage').getBoundingClientRect(),b=current();if(!rect.width||!rect.height)return;
   if(rect.width<540 && b.nodes.length && !overview){
@@ -349,8 +390,9 @@ function renderInspector(){
         current().nodes.filter(n=>n.id!==node.id&&n.type!=='start'&&n.type!=='note'&&!connected(current(),node.id,n.id)).map(n=>'<option value="'+esc(n.id)+'">'+esc(n.title)+'</option>').join('')+'</select>'+
         '<button class="button outline" data-action="connect-selected" style="margin-top:9px;width:100%" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('link')+' Connect to selected</button>'+
         '<p style="font-size:10px;line-height:1.65;color:var(--muted);margin:10px 0 0">Tip: press <kbd>L</kbd> or drag the output ● to connect visually.</p></div>'+
+        (node.type==='decision'?'<button class="button primary" data-action="add-branches" style="width:100%;margin-bottom:7px">'+icon('branch')+' Create Yes / No routes</button>':'')+
         '<button class="button primary" data-action="add-next" style="width:100%;margin-bottom:4px" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('plus')+' Add next step →</button>'+
-        '<div class="detail-separator"></div><div class="inspector-actions"><button class="button outline" data-action="duplicate-node">'+icon('copy')+' Duplicate</button><button class="button outline" data-action="delete-selected">'+icon('trash')+' Delete</button></div>';
+        '<div class="detail-separator"></div><div class="inspector-actions"><button class="button outline" data-action="copy-node">'+icon('copy')+' Copy</button><button class="button outline" data-action="duplicate-node">'+icon('copy')+' Duplicate</button><button class="button outline" data-action="delete-selected">'+icon('trash')+' Delete</button></div>';
     } else if(edge){
       $('inspector-heading').textContent='Edit connection';
       const from=byId(current(),edge.from),to=byId(current(),edge.to);
@@ -398,7 +440,7 @@ function showTemplates(){
     const btn=document.createElement('button');btn.className='template-card';btn.type='button';
     btn.innerHTML='<div class="template-art" style="--art-color:'+t.accent+'"><div class="art-node"></div><div class="art-node middle"></div><div class="art-node"></div></div>'+
       '<span class="template-meta">'+esc(t.category.toUpperCase())+'</span><strong>'+esc(t.name)+'</strong><small>'+esc(t.description)+'</small>';
-    btn.onclick=()=>{const b=makeBoard(t.key);state.boards.unshift(b);state.activeId=b.id;state.selected=null;state.selectedEdge=null;state.run=null;state.connectFrom=null;state.view={x:60,y:60,scale:1};$('templates-dialog').close();render();fitView();queueSave();notify(t.name+' is ready to edit.');};
+    btn.onclick=()=>{const b=makeBoard(t.key);state.boards.unshift(b);state.experienceDismissed=true;state.demo=null;state.activeId=b.id;state.selected=null;state.selectedEdge=null;state.run=null;state.connectFrom=null;state.view={x:60,y:60,scale:1};$('templates-dialog').close();render();fitView();queueSave();notify(t.name+' is ready to edit.');};
     grid.append(btn);
   });
   $('templates-dialog').showModal();
@@ -518,6 +560,34 @@ async function exportPng(){
     downloadFile(fileName('png'),blob,'image/png');notify('High-resolution PNG exported.');
   }catch(e){notify(e.message,true);}
 }
+async function exportPdf(){
+  try{
+    const {markup,width,height}=diagramSvg();
+    if(!current().nodes.length)throw new Error('Add a step before exporting your diagram.');
+    if(width>7000||height>7000)throw new Error('Diagram too large for PDF. Export SVG instead.');
+    const url=URL.createObjectURL(new Blob([markup],{type:'image/svg+xml;charset=utf-8'}));
+    const img=new Image();
+    try{
+      const pending=new Promise((resolve,reject)=>{
+        img.onload=resolve;img.onerror=()=>reject(new Error('Could not render diagram for PDF export.'));
+      });
+      img.src=url;await pending;
+    }finally{URL.revokeObjectURL(url);}
+    const scale=Math.min(2.5,3500/Math.max(width,height));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('PDF rendering is not supported by this browser.');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    const jpeg=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.94));
+    if(!jpeg)throw new Error('Could not encode the diagram for PDF.');
+    const pdf=jpegToPdf(new Uint8Array(await jpeg.arrayBuffer()),canvas.width,canvas.height);
+    downloadFile(fileName('pdf'),pdf,'application/pdf');
+    notify('Printable PDF exported. No subscription required.');
+  }catch(e){notify('PDF export failed: '+e.message,true);}
+}
+
 async function importJson(file){
   if(!file)return;
   try{
@@ -535,6 +605,14 @@ function setTab(name){state.tab=name;state.inspectorOpen=true;renderInspector();
  * A genuine three-step judge walkthrough. Every action operates on an editable
  * copy of the graph, never on somebody's existing work.
  */
+function startBlankBoard(){
+  const b=makeBoard('blank','Untitled flow');
+  state.boards.unshift(b);state.activeId=b.id;state.selected=null;state.selectedEdge=null;
+  state.connectFrom=null;state.run=null;state.demo=null;state.experienceDismissed=true;
+  state.view={x:50,y:50,scale:1};
+  render();fitView();queueSave();notify('Blank board ready. Click Add a first step to begin.');
+}
+
 function startChallenge(){
   const b=makeBoard('challenge','The broken launch');
   state.boards.unshift(b);
@@ -607,10 +685,10 @@ function renderExperience(){
   const close='<button class="demo-close" data-action="dismiss-experience" aria-label="Dismiss this guide" title="Dismiss">'+icon('x')+'</button>';
   if(!inChallenge){
     root.innerHTML=close+
-      '<div class="demo-eyebrow">A 45-SECOND PRODUCT TOUR</div>'+
-      '<h2 class="demo-title">From tangled ideas to a flow that works.</h2>'+
-      '<p class="demo-desc">Try a broken workflow. Spot its mistakes, connect the missing route, and watch your decision play out.</p>'+
-      '<div class="demo-buttons"><button class="button primary" data-action="challenge">'+icon('spark')+' Try the interactive demo</button></div>'+
+      '<div class="demo-eyebrow">WELCOME TO BRANCHLAB · FREE FLOWCHART EDITOR</div>'+
+      '<h2 class="demo-title">What would you like to create?</h2>'+
+      '<p class="demo-desc">Start a blank flow, adapt a real-world template, or discover how BranchLab checks your logic.</p>'+
+      '<div class="demo-buttons starter-choices"><button class="button primary" data-action="start-blank">'+icon('plus')+' Blank flow</button><button class="button outline" data-action="templates">'+icon('grid')+' Use template</button><button class="button outline" data-action="challenge">'+icon('play')+' Try interactive demo</button></div>'+
       '<p class="demo-note">Real editor. Real graph. No login, no payment, no sample-only features.</p>';
     return;
   }
@@ -654,12 +732,14 @@ function dispatchAction(action,el){
   $('menu-popover').hidden=true;
   switch(action){
     case 'challenge':startChallenge();break;
+    case 'start-blank':startBlankBoard();break;
     case 'dismiss-experience':state.experienceDismissed=true;renderExperience();break;
     case 'inspect-challenge':inspectChallenge();break;
     case 'repair-challenge':repairChallenge();break;
     case 'run-challenge':runChallenge();break;
     case 'auto-arrange':autoArrangeBoard();break;
     case 'add-next':addNextStep();break;
+    case 'add-branches':addDecisionPaths();break;
     case 'new-board':case 'templates':showTemplates();break;
     case 'add-first':addNode('start');break;
     case 'close-modal':document.querySelectorAll('dialog[open]').forEach(d=>d.close());break;
@@ -678,6 +758,8 @@ function dispatchAction(action,el){
     case 'redo':redo();break;
     case 'delete-selected':deleteSelection();break;
     case 'duplicate-node':duplicateNode();break;
+    case 'copy-node':copyNode();break;
+    case 'paste-node':pasteNode();break;
     case 'connect-selected':{const target=$('connect-select')?.value;if(target&&state.selected)connectNodes(state.selected,target);else notify('Select a destination first.');break;}
     case 'duplicate-board':duplicateBoard();break;
     case 'delete-board':deleteBoard();break;
@@ -685,6 +767,7 @@ function dispatchAction(action,el){
     case 'export-json':downloadFile(fileName('json'),JSON.stringify(current(),null,2),'application/json');notify('Board saved as JSON.');break;
     case 'export-svg':exportSvg();break;
     case 'export-png':exportPng();break;
+    case 'export-pdf':exportPdf();break;
     case 'toggle-theme':state.theme=state.theme==='light'?'dark':'light';queueSave();render();break;
     case 'menu':$('menu-popover').hidden=false;break;
   }
@@ -754,6 +837,8 @@ function bind(){
     if((e.key==='z'||e.key==='Z')&&mod){e.preventDefault();if(e.shiftKey)redo();else undo();return;}
     if((e.key==='y'||e.key==='Y')&&mod){e.preventDefault();redo();return;}
     if(e.key==='s'&&mod){e.preventDefault();save();notify('Saved in this browser.');return;}
+    if(!typing&&(e.key==='c'||e.key==='C')&&mod&&state.selected){e.preventDefault();copyNode();return;}
+    if(!typing&&(e.key==='v'||e.key==='V')&&mod&&nodeClipboard){e.preventDefault();pasteNode();return;}
     if(e.key==='Escape'){
       if(state.connectFrom){state.connectFrom=null;render();}
       else if(state.run)stopRun();

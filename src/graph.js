@@ -86,6 +86,37 @@ export function validateBoard(board) {
   const warnings = issues.filter(i=>i.severity==='warning').length;
   return {issues,errors,warnings,ready:errors===0,reachable};
 }
+/**
+ * Create the missing Yes/No outcomes for a decision in one reversible edit.
+ * Existing routes are preserved. A fully connected but unlabelled decision is
+ * not extended: the user should rename its connections instead.
+ */
+export function addDecisionBranches(board, decisionId) {
+  const parent=(board.nodes||[]).find(n=>n.id===decisionId);
+  if(!parent || parent.type!=='decision')return {created:[],reason:'Select a Decision step first.'};
+  const exits=outgoing(board,decisionId);
+  const labels=new Set(exits.map(e=>(e.label||'').trim().toLowerCase()));
+  if(exits.length>=2 && (!labels.has('yes')||!labels.has('no')))
+    return {created:[],reason:'This decision already has two routes. Rename their labels to Yes and No.'};
+  const missing=['Yes','No'].filter(label=>!labels.has(label.toLowerCase()));
+  if(!missing.length)return {created:[],reason:'Both Yes and No routes already exist.'};
+  const created=[];
+  for(const label of missing){
+    const x=parent.x+304;
+    let y=parent.y+(label==='Yes'?-150:150);
+    let attempts=0;
+    while(attempts<100 && board.nodes.some(n=>Math.abs(n.x-x)<NODE_W+24 && Math.abs(n.y-y)<NODE_H+28)){
+      y+=label==='Yes'?-165:165;attempts++;
+    }
+    const child={id:uid('node'),type:'process',x,y,
+      title:label==='Yes'?'Yes — next step':'No — next step',detail:''};
+    board.nodes.push(child);
+    board.edges.push({id:uid('edge'),from:parent.id,to:child.id,label});
+    created.push(child);
+  }
+  return {created,reason:null};
+}
+
 export function normalizeBoard(raw) {
   if(!raw || typeof raw!=='object' || !Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) throw new Error('Invalid board format.');
   if(raw.nodes.length>600 || raw.edges.length>1200) throw new Error('This board is too large to import.');

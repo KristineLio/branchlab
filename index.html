@@ -81,6 +81,7 @@
           <div class="separator"></div>
           <button class="button outline" type="button" id="inspect-button" data-action="inspect"><svg><use href="#i-search"/></svg> Inspect <span class="shortcut">I</span></button>
           <button class="button primary" type="button" id="run-button" data-action="run"><svg><use href="#i-play"/></svg> Run flow</button>
+          <button class="button outline export-button" type="button" data-action="menu" aria-label="Export diagram"><svg><use href="#i-download"/></svg> Export</button>
           <button class="icon-button top-more" data-action="menu" aria-label="More options" title="More options"><svg><use href="#i-more"/></svg></button>
         </div>
       </header>
@@ -96,7 +97,7 @@
             <svg id="edge-layer" aria-label="Diagram connectors"><defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="context-stroke"/></marker><marker id="arrow-active" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="#6259ed"/></marker></defs><g id="edge-paths"></g><path id="preview-edge" class="preview-edge" d="" fill="none"/></svg>
             <div id="nodes-layer"></div>
           </div>
-          <div id="empty-state" class="empty-state" hidden><div class="empty-art"><div class="empty-node one">01</div><div class="empty-wire"></div><div class="empty-node two">02</div></div><h2>Every big idea starts somewhere.</h2><p>Drag a shape from your toolbox, or start with a ready-made flow.</p><div class="empty-ctas"><button class="button primary" data-action="add-first">Add a first step</button><button class="button outline" data-action="templates">Browse templates</button></div></div>
+          <div id="empty-state" class="empty-state" hidden><div class="empty-art"><div class="empty-node one">01</div><div class="empty-wire"></div><div class="empty-node two">02</div></div><h2>Every big idea starts somewhere.</h2><p>Click <strong>Add a first step</strong>, then use the + action on a node to connect the next step automatically. Or choose a template.</p><div class="empty-ctas"><button class="button primary" data-action="add-first">Add a first step</button><button class="button outline" data-action="templates">Browse templates</button></div></div>
 
           <div id="run-panel" class="run-panel" hidden aria-live="polite"></div>
 
@@ -122,9 +123,12 @@
   <div id="menu-popover" class="menu-popover" hidden>
     <button data-action="export-svg"><svg><use href="#i-download"/></svg> Download SVG</button>
     <button data-action="export-png"><svg><use href="#i-download"/></svg> Download PNG</button>
+    <button data-action="export-pdf"><svg><use href="#i-file"/></svg> Download PDF · print-ready</button>
     <button data-action="export-json"><svg><use href="#i-file"/></svg> Export JSON</button>
     <button data-action="import"><svg><use href="#i-upload"/></svg> Import JSON</button>
     <hr>
+    <button data-action="copy-node"><svg><use href="#i-copy"/></svg> Copy selected node</button>
+    <button data-action="paste-node"><svg><use href="#i-plus"/></svg> Paste copied node</button>
     <button data-action="duplicate-board"><svg><use href="#i-copy"/></svg> Duplicate board</button>
     <button data-action="auto-arrange"><svg><use href="#i-grid"/></svg> Auto-arrange nodes</button>
     <button data-action="challenge"><svg><use href="#i-spark"/></svg> Try the flow challenge</button>
@@ -135,7 +139,7 @@
   </div>
 
   <dialog id="templates-dialog" class="app-dialog" aria-labelledby="templates-heading"><div class="dialog-top"><div><span class="eyebrow">START WITH A LITTLE MOMENTUM</span><h2 id="templates-heading">Find your starting point.</h2><p>Pick a template, or try a challenge that teaches you the editor in one minute.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div id="template-grid" class="template-grid"></div><div class="dialog-foot">Every template is editable. No sign-up, no limits, no strings attached.</div></dialog>
-  <dialog id="help-dialog" class="app-dialog compact-dialog" aria-labelledby="help-heading"><div class="dialog-top"><div><span class="eyebrow">A BETTER WAY TO THINK</span><h2 id="help-heading">You're in control.</h2><p>Everything you need to move around BranchLab.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div class="help-grid"><span>Drag a node</span><span>Move it on the canvas</span><span>Drag output ● to input ●</span><span>Connect two nodes</span><span><kbd>Delete</kbd> or <kbd>Backspace</kbd></span><span>Delete selection</span><span><kbd>Ctrl</kbd> + <kbd>Z</kbd></span><span>Undo</span><span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></span><span>Redo</span><span><kbd>Space</kbd> + drag</span><span>Pan canvas</span><span>Mouse wheel / trackpad</span><span>Pan canvas</span><span><kbd>Ctrl</kbd> + wheel</span><span>Zoom canvas</span><span><kbd>I</kbd></span><span>Open Flow Inspector</span><span><kbd>Esc</kbd></span><span>Cancel tool / run</span><span><kbd>L</kbd></span><span>Connect from selected step</span><span><kbd>Shift</kbd> + <kbd>A</kbd></span><span>Auto-arrange the diagram</span><span><kbd>Enter</kbd></span><span>Edit selected node / connection</span></div></dialog>
+  <dialog id="help-dialog" class="app-dialog compact-dialog" aria-labelledby="help-heading"><div class="dialog-top"><div><span class="eyebrow">A BETTER WAY TO THINK</span><h2 id="help-heading">You're in control.</h2><p>Everything you need to move around BranchLab.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div class="help-grid"><span>Drag a node</span><span>Move it on the canvas</span><span>Drag output ● to input ●</span><span>Connect two nodes</span><span><kbd>Delete</kbd> or <kbd>Backspace</kbd></span><span>Delete selection</span><span><kbd>Ctrl</kbd> + <kbd>Z</kbd></span><span>Undo</span><span><kbd>Ctrl</kbd> + <kbd>C</kbd> / <kbd>V</kbd></span><span>Copy / paste selected node</span><span>Decision → Create Yes/No routes</span><span>Add both connected outcomes in one click</span><span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></span><span>Redo</span><span><kbd>Space</kbd> + drag</span><span>Pan canvas</span><span>Mouse wheel / trackpad</span><span>Pan canvas</span><span><kbd>Ctrl</kbd> + wheel</span><span>Zoom canvas</span><span><kbd>I</kbd></span><span>Open Flow Inspector</span><span><kbd>Esc</kbd></span><span>Cancel tool / run</span><span><kbd>L</kbd></span><span>Connect from selected step</span><span><kbd>Shift</kbd> + <kbd>A</kbd></span><span>Auto-arrange the diagram</span><span><kbd>Enter</kbd></span><span>Edit selected node / connection</span></div></dialog>
   <input id="import-input" type="file" accept=".json,application/json" hidden>
   <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
 </body>

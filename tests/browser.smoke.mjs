@@ -12,7 +12,8 @@ try{
   assert.equal(await page.locator('#nodes-layer .node').count(),6,'Onboarding template should have six editable nodes');
   assert.equal(await page.locator('#edge-paths g').count(),6,'Onboarding should have six real connections');
   assert.equal((await page.locator('#issue-count').innerText()).trim(),'0','Initial flow should be healthy');
-  console.log('PASS initial workspace, six nodes, six connectors, clean validation');
+  assert.equal(await page.locator('#experience-card .starter-choices button').count(),3,'New users can choose blank, template or guided demo');
+  console.log('PASS initial workspace, three starter choices, six nodes, six connectors, clean validation');
 
   await page.locator('#run-button').click();
   await page.locator('.run-title').getByText('Visitor arrives').waitFor();
@@ -83,6 +84,15 @@ try{
   assert.ok(download.suggestedFilename().endsWith('.svg'));
   console.log('PASS SVG download');
 
+  await page.evaluate(()=>document.querySelector('#menu-popover').hidden=false);
+  const pdfEvent=page.waitForEvent('download',{timeout:15000});
+  await page.locator('[data-action="export-pdf"]').click();
+  const pdfDownload=await pdfEvent;
+  assert.ok(pdfDownload.suggestedFilename().endsWith('.pdf'));
+  const pdfBytes=await (await import('node:fs/promises')).readFile(await pdfDownload.path());
+  assert.ok(pdfBytes.subarray(0,8).toString('utf8').startsWith('%PDF-1.'),'PDF must be a real PDF, not renamed image data');
+  console.log('PASS valid PDF download');
+
   await page.screenshot({path:'branchlab-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
   await page.reload({waitUntil:'domcontentloaded'});
@@ -142,6 +152,22 @@ try{
   const undoneTidy=await page.evaluate(()=>window.BranchLabDebug.getBoard().nodes.map(n=>[n.id,n.x,n.y]));
   assert.deepEqual(undoneTidy,beforeTidy,'Undo should restore prior layout after auto-arrange');
   console.log('PASS auto-arrange and undo restore exact original coordinates');
+
+  await page.locator('.palette-item[data-type="decision"]').click();
+  const beforeBranch=await page.evaluate(()=>({nodes:window.BranchLabDebug.getBoard().nodes.length,edges:window.BranchLabDebug.getBoard().edges.length}));
+  await page.locator('#details-tab [data-action="add-branches"]').click();
+  const afterBranch=await page.evaluate(()=>window.BranchLabDebug.getBoard());
+  assert.equal(afterBranch.nodes.length,beforeBranch.nodes+2);
+  assert.equal(afterBranch.edges.length,beforeBranch.edges+2);
+  const newDecision=afterBranch.nodes[afterBranch.nodes.length-3];
+  assert.deepEqual(afterBranch.edges.filter(e=>e.from===newDecision.id).map(e=>e.label),['Yes','No']);
+  console.log('PASS one-click connected Yes/No branch creation');
+
+  await page.locator('#details-tab [data-action="copy-node"]').click();
+  await page.evaluate(()=>document.querySelector('#menu-popover').hidden=false);
+  await page.locator('[data-action="paste-node"]').click();
+  assert.equal((await page.evaluate(()=>window.BranchLabDebug.getBoard())).nodes.length,afterBranch.nodes.length+1);
+  console.log('PASS copy/paste an editable node');
 
   assert.deepEqual(errors,[],'No uncaught JavaScript errors');
   console.log('PASS No uncaught browser JavaScript exceptions');
