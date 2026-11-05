@@ -131,7 +131,7 @@ try{
   assert.equal(await page.locator('.run-title').innerText(),'Fix the blockers');
   await page.locator('#run-panel [data-action="run-next"]').click();
   assert.equal(await page.locator('.run-title').innerText(),'Launch confirmed');
-  assert.ok(await page.getByText('You just debugged a decision.').count());
+  assert.ok(await page.getByText('You caught a gap before launch.').count(),'The completion screen explains the real benefit');
   await page.screenshot({path:'branchlab-complete.png',fullPage:true});
   await page.locator('#run-panel [data-action="stop-run"]').last().click();
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
