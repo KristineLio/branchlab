@@ -142,6 +142,10 @@ try{
   assert.equal(await page.locator('#run-panel').isHidden(),true,'Guided completion collapses the simulation panel to reveal the full diagram');
   assert.equal((await page.evaluate(()=>window.BranchLabDebug.state().run.path)).at(-1),'f','Simulation truly ended on the graph End node');
   await page.screenshot({path:'branchlab-complete.png',fullPage:true});
+  assert.match(await page.locator('#run-button').innerText(),/Run again/,'Toolbar should not claim simulation is still running');
+  await page.locator('#run-button').click();
+  assert.equal(await page.locator('#run-panel').isVisible(),true,'Completed demo is replayable');
+  await page.locator('#run-panel [data-action="stop-run"]').first().click();
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
   console.log('PASS complete first-minute product demonstration from bug to working flow');
 
