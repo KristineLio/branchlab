@@ -536,7 +536,7 @@ function setTab(name){state.tab=name;state.inspectorOpen=true;renderInspector();
  * copy of the graph, never on somebody's existing work.
  */
 function startChallenge(){
-  const b=makeBoard('challenge','The broken launch · guided challenge');
+  const b=makeBoard('challenge','The broken launch');
   state.boards.unshift(b);
   state.activeId=b.id;
   state.selected=null;
@@ -558,6 +558,7 @@ function inspectChallenge(){
   state.tab='issues';
   state.inspectorOpen=true;
   render();
+  fitView(true);
   notify('Flow Inspector has identified the missing connections.');
 }
 function repairChallenge(){
@@ -575,6 +576,7 @@ function repairChallenge(){
   state.demo.step=2;
   state.tab='issues';
   render();
+  fitView(true);
   notify('The missing routes are now real graph connections. All paths lead to End.');
 }
 function runChallenge(){
