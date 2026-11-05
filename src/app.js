@@ -807,7 +807,7 @@ function renderExperience(){
     root.innerHTML=close+'<div class="demo-eyebrow">MISSION COMPLETE · USE IT FOR REAL WORK</div>'+
       '<h2 class="demo-title">You caught a gap before launch.</h2>'+
       '<p class="demo-desc">Two missing connectors were repaired, the No route was tested, and both outcomes now reach End. That is the difference between drawing and verifying a process.</p>'+
-      stats+progress+'<div class="demo-success">✓ Inspector clean · No path reaches the End safely</div>'.replace('No path reaches the End safely','Both outcomes reach End')+
+      stats+progress+'<div class="demo-success">✓ Inspector clean · Both outcomes reach End</div>'+
       '<div class="demo-buttons"><button class="button primary" data-action="export-pdf">'+icon('download')+' Export as PDF</button>'+
       '<button class="button outline" data-action="templates">'+icon('plus')+' Make your own flow</button>'+
       '<button class="button subtle" data-action="dismiss-experience">Keep editing</button></div>';
@@ -819,13 +819,14 @@ function dispatchAction(action,el){
   switch(action){
     case 'challenge':startChallenge();break;
     case 'start-blank':startBlankBoard();break;
-    case 'dismiss-experience':state.experienceDismissed=true;renderExperience();break;
+    case 'dismiss-experience':state.experienceDismissed=true;state.demo=null;queueSave();renderExperience();break;
     case 'inspect-challenge':inspectChallenge();break;
     case 'repair-challenge':repairChallenge();break;
     case 'run-challenge':runChallenge();break;
     case 'auto-arrange':autoArrangeBoard();break;
     case 'add-next':addNextStep();break;
     case 'add-branches':addDecisionPaths();break;
+    case 'quick-fix':quickFixIssue(el.dataset.node,el.dataset.fix);break;
     case 'new-board':case 'templates':showTemplates();break;
     case 'add-first':addNode('start');break;
     case 'close-modal':document.querySelectorAll('dialog[open]').forEach(d=>d.close());break;
@@ -969,5 +970,12 @@ function bind(){
   window.addEventListener('beforeunload',save);
   document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();}));
 }
-load();bind();render();requestAnimationFrame(()=>fitView());
-window.BranchLabDebug={getBoard:()=>clone(current()),validate:()=>validateBoard(current()),state:()=>({activeId:state.activeId,run:clone(state.run),selected:state.selected,view:clone(state.view)})};
+load();bind();
+const startupParams=new URLSearchParams(location.search);
+if(startupParams.get('demo')==='1'){
+  startupParams.delete('demo');
+  try{history.replaceState(null,'',location.pathname+(startupParams.toString()?'?'+startupParams.toString():'')+location.hash);}catch{}
+  startChallenge();
+}else{render();requestAnimationFrame(()=>fitView());}
+window.BranchLabDebug={getBoard:()=>clone(current()),validate:()=>validateBoard(current()),coverage:()=>analyzeOutcomes(current()),
+  state:()=>({activeId:state.activeId,run:clone(state.run),selected:state.selected,demo:clone(state.demo),view:clone(state.view)})};
