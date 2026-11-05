@@ -88,6 +88,7 @@ try{
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#stage').waitFor();
   assert.equal(await page.locator('#nodes-layer .node').count(),7);
+  await page.waitForTimeout(350);
   await page.screenshot({path:'branchlab-mobile.png',fullPage:true});
   console.log('PASS responsive mobile viewport');
 
@@ -99,6 +100,7 @@ try{
   assert.equal(await page.locator('#edge-paths g').count(),4);
   assert.equal(await page.locator('#issue-count').innerText(),'3');
   await page.locator('#experience-card [data-action="inspect-challenge"]').click();
+  await page.screenshot({path:'branchlab-inspection.png',fullPage:true});
   assert.ok(await page.locator('#issues-tab .issue-item').count()>=3);
   await page.locator('#experience-card [data-action="repair-challenge"]').click();
   await page.screenshot({path:'branchlab-repaired.png',fullPage:true});
