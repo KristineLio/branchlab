@@ -206,3 +206,6 @@ body.dark .demo-success{background:#284439;color:#9de2bf}
   .demo-buttons .button{height:30px}
   .connect-hint{top:9px;font-size:9px;max-width:96%}
 }
+
+.stage.is-running #world{transition:transform .25s ease-out}
+@media (prefers-reduced-motion:reduce){.stage.is-running #world{transition:none}}
