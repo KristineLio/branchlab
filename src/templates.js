@@ -60,6 +60,66 @@ export const TEMPLATES = [
     ]
   },
   {
+    key: 'bugtriage',
+    name: 'Bug triage',
+    category: 'Software',
+    description: 'Prioritize a reported bug, choose an urgent fix or backlog, and close the loop.',
+    accent: '#6f80de',
+    nodes: [
+      {id:'a',type:'start',x:80,y:220,title:'Bug reported',detail:'Capture reproduction steps and expected behavior.'},
+      {id:'b',type:'process',x:390,y:220,title:'Reproduce and assess',detail:'Confirm the issue and identify its impact.'},
+      {id:'c',type:'decision',x:700,y:220,title:'Blocking users?',detail:'Is the issue critical or security sensitive?'},
+      {id:'d',type:'process',x:1030,y:60,title:'Fix and deploy urgently',detail:'Patch, test and communicate the change.'},
+      {id:'e',type:'process',x:1030,y:390,title:'Prioritize in backlog',detail:'Estimate, assign and schedule the fix.'},
+      {id:'f',type:'end',x:1360,y:220,title:'Update the reporter',detail:'Share status, owner and next steps.'}
+    ],
+    edges: [
+      {id:'ab',from:'a',to:'b',label:''},{id:'bc',from:'b',to:'c',label:''},
+      {id:'cd',from:'c',to:'d',label:'Yes'},{id:'ce',from:'c',to:'e',label:'No'},
+      {id:'df',from:'d',to:'f',label:''},{id:'ef',from:'e',to:'f',label:''}
+    ]
+  },
+  {
+    key: 'studyplan',
+    name: 'Study session planner',
+    category: 'Education',
+    description: 'Plan a focused study block, handle knowledge gaps, and finish with a review.',
+    accent: '#47a09c',
+    nodes: [
+      {id:'a',type:'start',x:80,y:220,title:'Choose a learning goal',detail:'Decide exactly what you will be able to explain.'},
+      {id:'b',type:'process',x:390,y:220,title:'Study and practice',detail:'Read the material, then solve one exercise.'},
+      {id:'c',type:'decision',x:700,y:220,title:'Can you explain it?',detail:'Test yourself without looking at notes.'},
+      {id:'d',type:'process',x:1030,y:60,title:'Practice independently',detail:'Complete a new question without assistance.'},
+      {id:'e',type:'process',x:1030,y:390,title:'Review the gaps',detail:'Revisit the concept and write an example.'},
+      {id:'f',type:'end',x:1360,y:220,title:'Record progress',detail:'Note your confidence and the next topic.'}
+    ],
+    edges: [
+      {id:'ab',from:'a',to:'b',label:''},{id:'bc',from:'b',to:'c',label:''},
+      {id:'cd',from:'c',to:'d',label:'Yes'},{id:'ce',from:'c',to:'e',label:'No'},
+      {id:'df',from:'d',to:'f',label:''},{id:'ef',from:'e',to:'f',label:''}
+    ]
+  },
+  {
+    key: 'contentapproval',
+    name: 'Content approval',
+    category: 'Marketing',
+    description: 'Move creative work from draft to publishing without losing track of feedback.',
+    accent: '#dc855c',
+    nodes: [
+      {id:'a',type:'start',x:80,y:220,title:'Content requested',detail:'Brief, channel and deadline are agreed.'},
+      {id:'b',type:'process',x:390,y:220,title:'Draft and review',detail:'Create the asset and check requirements.'},
+      {id:'c',type:'decision',x:700,y:220,title:'Approved to publish?',detail:'Does the draft meet quality and brand standards?'},
+      {id:'d',type:'process',x:1030,y:60,title:'Schedule the release',detail:'Choose a channel and publishing time.'},
+      {id:'e',type:'process',x:1030,y:390,title:'Revise from feedback',detail:'Record the requested changes and owner.'},
+      {id:'f',type:'end',x:1360,y:220,title:'Confirm next steps',detail:'Record publication or a new review date.'}
+    ],
+    edges: [
+      {id:'ab',from:'a',to:'b',label:''},{id:'bc',from:'b',to:'c',label:''},
+      {id:'cd',from:'c',to:'d',label:'Yes'},{id:'ce',from:'c',to:'e',label:'No'},
+      {id:'df',from:'d',to:'f',label:''},{id:'ef',from:'e',to:'f',label:''}
+    ]
+  },
+  {
     key: 'challenge',
     name: 'The broken launch',
     category: 'Interactive challenge',
