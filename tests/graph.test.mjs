@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {makeBoard,TEMPLATES} from '../src/templates.js';
-import {validateBoard,normalizeBoard,reachableFrom,detectCycle,fitBounds,connected,clone,autoArrange} from '../src/graph.js';
+import {validateBoard,normalizeBoard,reachableFrom,detectCycle,fitBounds,connected,clone,autoArrange,addDecisionBranches} from '../src/graph.js';
 
 test('Three showcase templates and a blank canvas exist',()=>{
   assert.ok(TEMPLATES.length>=4);
@@ -113,4 +113,32 @@ test('Auto-arrange terminates for cyclic graphs and handles disconnected nodes',
   assert.equal(laidOut.length,b.nodes.length);
   assert.ok(laidOut.every(n=>Number.isFinite(n.x)&&Number.isFinite(n.y)));
   assert.ok(laidOut.find(n=>n.id==='orphan').x>laidOut.find(n=>n.id==='f').x);
+});
+
+test('One-click decision branching creates exactly the missing, connected outcomes',()=>{
+  const b=makeBoard('signup');
+  b.edges=b.edges.filter(e=>e.from!=='c');
+  const first=addDecisionBranches(b,'c');
+  assert.equal(first.created.length,2);
+  const branches=b.edges.filter(e=>e.from==='c');
+  assert.deepEqual(branches.map(e=>e.label),['Yes','No']);
+  assert.ok(branches.every(e=>b.nodes.some(n=>n.id===e.to)));
+  const second=addDecisionBranches(b,'c');
+  assert.equal(second.created.length,0,'Repeated clicks must not duplicate outcomes');
+  assert.equal(b.edges.filter(e=>e.from==='c').length,2);
+  const branchNodes=first.created;
+  assert.ok(Math.abs(branchNodes[0].y-branchNodes[1].y)>=110,'Outcomes must not overlap');
+});
+test('One-click branching preserves existing routes and asks to label ambiguous routes',()=>{
+  const b=makeBoard('signup');
+  b.edges=b.edges.filter(e=>e.id!=='ce');
+  const added=addDecisionBranches(b,'c');
+  assert.equal(added.created.length,1);
+  assert.equal(b.edges.find(e=>e.from==='c'&&e.label==='Yes').to,'d');
+  assert.ok(b.edges.some(e=>e.from==='c'&&e.label==='No'));
+  const bad=makeBoard('signup');
+  bad.edges.find(e=>e.id==='cd').label='Maybe';
+  const noEdit=addDecisionBranches(bad,'c');
+  assert.equal(noEdit.created.length,0);
+  assert.match(noEdit.reason,/Rename/);
 });
