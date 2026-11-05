@@ -53,9 +53,9 @@ try{
   const dragNode=page.locator('.node[data-id="a"]');
   const oldStyle=await dragNode.getAttribute('style');
   const bb=await dragNode.boundingBox();
-  await page.mouse.move(bb.x+80,bb.y+65);
+  await page.mouse.move(bb.x+bb.width/2,bb.y+bb.height/2);
   await page.mouse.down();
-  await page.mouse.move(bb.x+120,bb.y+95,{steps:6});
+  await page.mouse.move(bb.x+bb.width/2+50,bb.y+bb.height/2+35,{steps:6});
   await page.mouse.up();
   const newStyle=await dragNode.getAttribute('style');
   assert.notEqual(oldStyle,newStyle,'Dragging should update actual diagram position');
