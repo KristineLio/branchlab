@@ -1,5 +1,5 @@
 import {TEMPLATES,makeBoard} from './templates.js';
-import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds} from './graph.js';
+import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange} from './graph.js';
 
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
@@ -11,7 +11,7 @@ const byId=(board,id)=>board.nodes.find(n=>n.id===id);
 let boardData;
 let state={
   boards:[],activeId:'',selected:null,selectedEdge:null,tab:'details',
-  inspectorOpen:true,connectFrom:null,run:null,theme:'light',view:{x:80,y:65,scale:.85}
+  inspectorOpen:true,connectFrom:null,run:null,demo:null,experienceDismissed:false,theme:'light',view:{x:80,y:65,scale:.85}
 };
 let move=null,spaceHeld=false,saveTimer=null,toastTimer=null;
 const stacks=new Map();
@@ -72,7 +72,7 @@ function notify(msg,error=false){
 function render(){
   const board=current();if(!board)return;
   $('board-title').value=board.name;
-  renderBoards();renderStage();renderInspector();renderSummary();
+  renderBoards();renderStage();renderInspector();renderSummary();renderExperience();
   document.querySelector('.inspector').hidden=!state.inspectorOpen;
   document.body.classList.toggle('dark',state.theme==='dark');
   $('run-button').innerHTML=icon('play')+(state.run?' Running…':' Run flow');
@@ -92,6 +92,7 @@ function renderBoards(){
 function switchBoard(id){
   if(id===state.activeId)return;
   state.activeId=id;state.selected=null;state.selectedEdge=null;state.run=null;state.connectFrom=null;
+  if(state.demo && state.demo.boardId!==id)state.demo=null;
   state.view={x:60,y:65,scale:1};
   render();fitView();queueSave();
 }
@@ -112,6 +113,9 @@ function applyTransform(){
 }
 function renderStage(){
   const board=current();
+  $('stage').classList.toggle('is-connecting',!!state.connectFrom);
+  $('connect-hint').hidden=!state.connectFrom;
+  if(!state.connectFrom)$('preview-edge').setAttribute('d','');
   $('empty-state').hidden=board.nodes.length>0;
   const layer=$('nodes-layer');layer.replaceChildren();
   board.nodes.forEach((node,index)=>{
@@ -369,7 +373,10 @@ function takeEdge(id){
   const edge=outgoing(current(),node.id).find(e=>e.id===id);if(!edge)return;
   if(run.path.length>=70)return notify('Simulation stopped after 70 steps to prevent an endless loop.',true);
   run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();
-  if(runCurrent()?.type==='end')notify('Flow completed! You reached the end.');
+  if(runCurrent()?.type==='end'){
+    if(state.demo && state.demo.boardId===state.activeId){state.demo.step=4;renderExperience();}
+    notify('Flow completed! You reached the end.');
+  }
 }
 function stepForward(){
   const node=runCurrent();if(!node)return;
@@ -484,6 +491,12 @@ function setTab(name){state.tab=name;state.inspectorOpen=true;renderInspector();
 function dispatchAction(action,el){
   $('menu-popover').hidden=true;
   switch(action){
+    case 'challenge':startChallenge();break;
+    case 'dismiss-experience':state.experienceDismissed=true;renderExperience();break;
+    case 'inspect-challenge':inspectChallenge();break;
+    case 'repair-challenge':repairChallenge();break;
+    case 'run-challenge':runChallenge();break;
+    case 'auto-arrange':autoArrangeBoard();break;
     case 'new-board':case 'templates':showTemplates();break;
     case 'add-first':addNode('start');break;
     case 'close-modal':document.querySelectorAll('dialog[open]').forEach(d=>d.close());break;
@@ -524,7 +537,7 @@ function bind(){
   $('stage').addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
   $('stage').addEventListener('drop',e=>{e.preventDefault();const type=e.dataTransfer.getData('text/plain');if(NODE_TYPES[type])addNode(type,screenToWorld(e.clientX,e.clientY));});
   $('stage').addEventListener('pointerdown',e=>{
-    if(e.button!==0 || e.target.closest('.node') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
+    if(e.button!==0 || e.target.closest('.node') || e.target.closest('.experience-card') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
     if(state.connectFrom){state.connectFrom=null;render();return;}
     state.selected=null;state.selectedEdge=null;renderInspector();
     move={kind:'pan',x:e.clientX,y:e.clientY,viewX:state.view.x,viewY:state.view.y};
@@ -589,6 +602,17 @@ function bind(){
     if((e.key==='Delete'||e.key==='Backspace')&&(state.selected||state.selectedEdge)){e.preventDefault();deleteSelection();}
     if((e.key==='d'||e.key==='D')&&mod&&state.selected){e.preventDefault();duplicateNode();}
     if(e.key.toLowerCase()==='i'&&!mod){setTab('issues');}
+    if(e.key.toLowerCase()==='l'&&!mod&&state.selected){
+      const n=byId(current(),state.selected);
+      if(n&&n.type!=='end'&&n.type!=='note'){
+        state.connectFrom=n.id;render();notify('Choose a node to connect to. Esc cancels.');
+      }
+    }
+    if(e.key==='Enter'&&!mod){
+      const field=$(state.selected?'node-title-field':'edge-label-field');
+      if(field){e.preventDefault();field.focus();field.select();}
+    }
+    if(e.shiftKey&&e.key.toLowerCase()==='a'&&!mod){e.preventDefault();autoArrangeBoard();}
   });
   window.addEventListener('keyup',e=>{if(e.code==='Space')spaceHeld=false;});
   window.addEventListener('beforeunload',save);
