@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {makeBoard,TEMPLATES} from '../src/templates.js';
-import {validateBoard,normalizeBoard,reachableFrom,detectCycle,fitBounds,connected,clone,autoArrange,addDecisionBranches} from '../src/graph.js';
+import {validateBoard,normalizeBoard,reachableFrom,detectCycle,fitBounds,connected,clone,autoArrange,addDecisionBranches,analyzeOutcomes} from '../src/graph.js';
 
 test('Three showcase templates and a blank canvas exist',()=>{
   assert.ok(TEMPLATES.length>=4);
@@ -141,4 +141,31 @@ test('One-click branching preserves existing routes and asks to label ambiguous 
   const noEdit=addDecisionBranches(bad,'c');
   assert.equal(noEdit.created.length,0);
   assert.match(noEdit.reason,/Rename/);
+});
+
+test('Branch coverage proves both Yes and No outcomes can reach an End',()=>{
+  const healthy=makeBoard('signup');
+  const coverage=analyzeOutcomes(healthy);
+  assert.deepEqual({covered:coverage.covered,total:coverage.total,decisions:coverage.decisions},
+    {covered:2,total:2,decisions:1});
+  assert.ok(coverage.routes.every(route=>route.covered));
+
+  const broken=makeBoard('challenge');
+  assert.equal(analyzeOutcomes(broken).covered,1,'Only the connected Yes outcome is covered');
+  broken.edges.push({id:'ce',from:'c',to:'e',label:'No'});
+  assert.equal(analyzeOutcomes(broken).covered,1,'A No outcome ending in a dead end is NOT validated');
+  assert.ok(validateBoard(broken).issues.some(i=>i.title==='Branch has no finish'));
+  broken.edges.push({id:'ef',from:'e',to:'f',label:''});
+  assert.equal(analyzeOutcomes(broken).covered,2);
+  assert.deepEqual(validateBoard(broken).issues,[]);
+});
+test('Coverage does not hang on cycles or count duplicate branch labels as covered',()=>{
+  const board=makeBoard('signup');
+  board.edges=board.edges.filter(e=>e.id!=='ef');
+  board.edges.push({id:'loop',from:'e',to:'e',label:''});
+  assert.equal(analyzeOutcomes(board).covered,1);
+  assert.ok(validateBoard(board).issues.some(i=>i.title==='Branch has no finish'));
+  board.edges.push({id:'another-no',from:'c',to:'e',label:'No'});
+  assert.equal(analyzeOutcomes(board).covered,1);
+  assert.ok(validateBoard(board).issues.some(i=>i.title==='Duplicate branch label'));
 });
