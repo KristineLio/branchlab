@@ -108,6 +108,14 @@ try{
   await page.setViewportSize({width:1440,height:900});
   await page.locator('#experience-card [data-action="challenge"]').click();
   await page.screenshot({path:'branchlab-challenge.png',fullPage:true});
+  const demoOverview=await page.evaluate(()=>{
+    const stage=document.querySelector('#stage').getBoundingClientRect();
+    return Array.from(document.querySelectorAll('#nodes-layer .node')).every(n=>{
+      const r=n.getBoundingClientRect();
+      return r.left>=stage.left-1&&r.right<=stage.right+1&&r.top>=stage.top-1&&r.bottom<=stage.bottom+1;
+    });
+  });
+  assert.equal(demoOverview,true,'Guided challenge should show every step in one full-flow overview');
   assert.equal(await page.locator('#nodes-layer .node').count(),6);
   assert.equal(await page.locator('#edge-paths g').count(),4);
   assert.equal(await page.locator('#issue-count').innerText(),'3');
@@ -130,10 +138,10 @@ try{
   await page.locator('#run-panel [data-action="choose-edge"]').filter({hasText:'No'}).click();
   assert.equal(await page.locator('.run-title').innerText(),'Fix the blockers');
   await page.locator('#run-panel [data-action="run-next"]').click();
-  assert.equal(await page.locator('.run-title').innerText(),'Launch confirmed');
   assert.ok(await page.getByText('You caught a gap before launch.').count(),'The completion screen explains the real benefit');
+  assert.equal(await page.locator('#run-panel').isHidden(),true,'Guided completion collapses the simulation panel to reveal the full diagram');
+  assert.equal((await page.evaluate(()=>window.BranchLabDebug.state().run.path)).at(-1),'f','Simulation truly ended on the graph End node');
   await page.screenshot({path:'branchlab-complete.png',fullPage:true});
-  await page.locator('#run-panel [data-action="stop-run"]').last().click();
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
   console.log('PASS complete first-minute product demonstration from bug to working flow');
 
