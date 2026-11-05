@@ -488,6 +488,124 @@ async function importJson(file){
   $('import-input').value='';
 }
 function setTab(name){state.tab=name;state.inspectorOpen=true;renderInspector();document.querySelector('.inspector').hidden=false;}
+
+/**
+ * A genuine three-step judge walkthrough. Every action operates on an editable
+ * copy of the graph, never on somebody's existing work.
+ */
+function startChallenge(){
+  const b=makeBoard('challenge','The broken launch · guided challenge');
+  state.boards.unshift(b);
+  state.activeId=b.id;
+  state.selected=null;
+  state.selectedEdge=null;
+  state.connectFrom=null;
+  state.run=null;
+  state.tab='details';
+  state.inspectorOpen=true;
+  state.experienceDismissed=false;
+  state.demo={boardId:b.id,step:0};
+  render();
+  fitView();
+  queueSave();
+  notify('A broken workflow is on your canvas. Find the missing paths.');
+}
+function inspectChallenge(){
+  if(!state.demo || state.demo.boardId!==state.activeId)return;
+  state.demo.step=1;
+  state.tab='issues';
+  state.inspectorOpen=true;
+  render();
+  notify('Flow Inspector has identified the missing connections.');
+}
+function repairChallenge(){
+  if(!state.demo || state.demo.boardId!==state.activeId)return;
+  const b=current();
+  const needed=[
+    {from:'c',to:'e',label:'No'},
+    {from:'e',to:'f',label:''}
+  ].filter(e=>!connected(b,e.from,e.to));
+  if(needed.length){
+    record();
+    needed.forEach(e=>b.edges.push({id:uid('edge'),...e}));
+    queueSave();
+  }
+  state.demo.step=2;
+  state.tab='issues';
+  render();
+  notify('The missing routes are now real graph connections. All paths lead to End.');
+}
+function runChallenge(){
+  if(!state.demo || state.demo.boardId!==state.activeId)return;
+  if(validateBoard(current()).errors){state.tab='issues';render();return notify('Repair the missing connections before running.',true);}
+  state.demo.step=3;
+  startRun();
+}
+function autoArrangeBoard(){
+  const b=current();
+  if(!b.nodes.length)return notify('Add some nodes to arrange first.');
+  record();
+  b.nodes=autoArrange(b);
+  state.run=null;
+  state.selected=null;
+  state.selectedEdge=null;
+  render();
+  fitView(window.innerWidth>=640);
+  queueSave();
+  notify('Nodes arranged by workflow order. Undo with Ctrl+Z.');
+}
+function renderExperience(){
+  const root=$('experience-card');
+  if(!root)return;
+  const inChallenge=state.demo && state.demo.boardId===state.activeId;
+  root.hidden=!!state.experienceDismissed;
+  if(root.hidden)return;
+  const close='<button class="demo-close" data-action="dismiss-experience" aria-label="Dismiss this guide" title="Dismiss">'+icon('x')+'</button>';
+  if(!inChallenge){
+    root.innerHTML=close+
+      '<div class="demo-eyebrow">A 45-SECOND PRODUCT TOUR</div>'+
+      '<h2 class="demo-title">From tangled ideas to a flow that works.</h2>'+
+      '<p class="demo-desc">Try a broken workflow. Spot its mistakes, connect the missing route, and watch your decision play out.</p>'+
+      '<div class="demo-buttons"><button class="button primary" data-action="challenge">'+icon('spark')+' Try the interactive demo</button></div>'+
+      '<p class="demo-note">Real editor. Real graph. No login, no payment, no sample-only features.</p>';
+    return;
+  }
+  const step=state.demo.step;
+  const steps='<div class="demo-progress" aria-label="Challenge progress">'+
+      [0,1,2].map(i=>'<span class="'+(step>=i+1?'done':'')+'"></span>').join('')+'</div>';
+  if(step===0){
+    root.innerHTML=close+'<div class="demo-eyebrow">STEP 1 OF 3 · DISCOVER</div>'+
+      '<h2 class="demo-title">Something is broken here.</h2>'+
+      '<p class="demo-desc">This launch process looks almost complete. One decision has no second route, and one step is stranded.</p>'+
+      steps+'<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Find the problems</button></div>'+
+      '<p class="demo-note">The Flow Inspector checks the actual graph.</p>';
+  }else if(step===1){
+    root.innerHTML=close+'<div class="demo-eyebrow">STEP 2 OF 3 · REPAIR</div>'+
+      '<h2 class="demo-title">The missing route is exposed.</h2>'+
+      '<p class="demo-desc">Check the issues on the right: the “No” branch is missing, and “Fix the blockers” leads nowhere.</p>'+
+      steps+'<div class="demo-buttons"><button class="button primary" data-action="repair-challenge">'+icon('link')+' Connect the broken paths</button></div>'+
+      '<p class="demo-note">You can also connect the nodes yourself using their circular handles.</p>';
+  }else if(step===2){
+    root.innerHTML=close+'<div class="demo-eyebrow">STEP 3 OF 3 · TEST</div>'+
+      '<h2 class="demo-title">Your flow is healthy. Now run it.</h2>'+
+      '<p class="demo-desc">Both Yes and No now lead to a complete outcome. Trace the logic from Start to End, one step at a time.</p>'+
+      steps+'<div class="demo-success">✓ No structural issues remain.</div>'+
+      '<div class="demo-buttons"><button class="button primary" data-action="run-challenge">'+icon('play')+' Run the real flow</button></div>';
+  }else if(step===3){
+    root.innerHTML=close+'<div class="demo-eyebrow">LIVE SIMULATION</div>'+
+      '<h2 class="demo-title">Watch every choice matter.</h2>'+
+      '<p class="demo-desc">Use Next step in the simulation panel. When you reach the decision, choose Yes or No to follow that branch.</p>'+
+      steps+'<div class="demo-buttons"><button class="button outline" data-action="stop-run">Pause & edit</button></div>';
+  }else{
+    root.innerHTML=close+'<div class="demo-eyebrow">CHALLENGE COMPLETED</div>'+
+      '<h2 class="demo-title">You just debugged a decision.</h2>'+
+      '<p class="demo-desc">That is BranchLab: draw the plan, catch its blind spots, and validate the outcome before it happens.</p>'+
+      steps+'<div class="demo-success">✓ Inspector clean · Path reached End</div>'+
+      '<div class="demo-buttons"><button class="button primary" data-action="templates">'+icon('plus')+' Make your own flow</button>'+
+      '<button class="button outline" data-action="dismiss-experience">Keep editing</button></div>';
+  }
+}
+
 function dispatchAction(action,el){
   $('menu-popover').hidden=true;
   switch(action){
