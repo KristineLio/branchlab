@@ -125,7 +125,7 @@ try{
   await page.locator('#experience-card [data-action="repair-challenge"]').click();
   assert.equal(await page.locator('#edge-paths g').count(),5,'First action repairs just one real connector');
   assert.equal((await page.evaluate(()=>window.BranchLabDebug.coverage())).covered,1,'A dead-end No route must not pass the coverage check');
-  assert.match(await page.locator('#experience-card .demo-fix-target').innerText(),/Fix the blockers/);
+  assert.match(await page.locator('#experience-card .demo-fix-target').innerText(),/Update the customer/);
   await page.locator('#experience-card [data-action="repair-challenge"]').click();
   await page.screenshot({path:'branchlab-repaired.png',fullPage:true});
   assert.equal(await page.locator('#edge-paths g').count(),6);
@@ -134,11 +134,11 @@ try{
   await page.locator('#experience-card [data-action="run-challenge"]').click();
   await page.locator('#run-panel [data-action="run-next"]').click();
   await page.locator('#run-panel [data-action="run-next"]').click();
-  assert.equal(await page.locator('.run-title').innerText(),'Ready to ship?');
+  assert.equal(await page.locator('.run-title').innerText(),'Resolved on first reply?');
   await page.locator('#run-panel [data-action="choose-edge"]').filter({hasText:'No'}).click();
-  assert.equal(await page.locator('.run-title').innerText(),'Fix the blockers');
+  assert.equal(await page.locator('.run-title').innerText(),'Escalate to specialist');
   await page.locator('#run-panel [data-action="run-next"]').click();
-  assert.ok(await page.getByText('You caught a gap before launch.').count(),'The completion screen explains the real benefit');
+  assert.ok(await page.getByText('No customer gets lost in the flow.').count(),'The completion screen explains the real support benefit');
   assert.equal(await page.locator('#run-panel').isHidden(),true,'Guided completion collapses the simulation panel to reveal the full diagram');
   assert.equal((await page.evaluate(()=>window.BranchLabDebug.state().run.path)).at(-1),'f','Simulation truly ended on the graph End node');
   await page.screenshot({path:'branchlab-complete.png',fullPage:true});
@@ -233,7 +233,7 @@ try{
   await quick.locator('#nodes-layer .node').first().waitFor();
   assert.equal(await quick.locator('#edge-paths g').count(),4,'Direct link starts the broken challenge');
   assert.equal(new URL(quick.url()).searchParams.has('demo'),false,'Demo param removed to avoid reopening on refresh');
-  assert.match(await quick.locator('#experience-card').innerText(),/Would you launch/);
+  assert.match(await quick.locator('#experience-card').innerText(),/What if the first reply/);
 
   await quick.locator('#experience-card [data-action="dismiss-experience"]').click();
   await quick.waitForTimeout(450);
@@ -254,6 +254,69 @@ try{
   assert.deepEqual(quickErrors,[]);
   await isolated.close();
   console.log('PASS actionable Inspector quick-fix creates real graph edges');
+
+
+  // Completely independent blank-board journey, with editable names and real exports.
+  const beginner=await browser.newContext({viewport:{width:1440,height:900},acceptDownloads:true});
+  const fresh=await beginner.newPage();
+  const beginnerErrors=[];
+  fresh.on('pageerror',e=>beginnerErrors.push(e.message));
+  await fresh.goto('http://127.0.0.1:8080/',{waitUntil:'domcontentloaded'});
+  await fresh.locator('#experience-card [data-action="start-blank"]').click();
+  assert.equal((await fresh.evaluate(()=>window.BranchLabDebug.getBoard())).quickStart,true);
+  assert.equal(await fresh.locator('#nodes-layer .node').count(),0);
+  assert.equal(await fresh.locator('#quickstart-card').isVisible(),true);
+  const guided=[
+    {step:'start',name:'Support request arrives'},
+    {step:'process',name:'Understand the problem'},
+    {step:'decision',name:'Can we solve it?'},
+    {step:'branches',yes:'Confirm resolution',no:'Escalate to specialist'},
+    {step:'finish',name:'Update the customer'}
+  ];
+  for(const data of guided){
+    const step=await fresh.evaluate(()=>window.BranchLabDebug.state().quickStartStep);
+    assert.equal(step,data.step,'Step-by-step guide must follow genuine graph state');
+    if(data.name)await fresh.locator('#quickstart-title').fill(data.name);
+    if(data.yes)await fresh.locator('#quickstart-yes').fill(data.yes);
+    if(data.no)await fresh.locator('#quickstart-no').fill(data.no);
+    await fresh.locator('#quickstart-card [data-action="quickstart-advance"]').click();
+  }
+  assert.equal(await fresh.locator('#nodes-layer .node').count(),6);
+  assert.equal(await fresh.locator('#edge-paths g').count(),6);
+  assert.equal(await fresh.evaluate(()=>window.BranchLabDebug.state().quickStartStep),'check');
+  await fresh.locator('#quickstart-card [data-action="quickstart-advance"]').click();
+  assert.equal(await fresh.evaluate(()=>window.BranchLabDebug.state().quickStartStep),'done');
+  assert.equal((await fresh.evaluate(()=>window.BranchLabDebug.coverage())).covered,2);
+  assert.equal(await fresh.locator('#issue-count').innerText(),'0');
+  await fresh.screenshot({path:'branchlab-guided-blank-desktop.png',fullPage:true});
+  console.log('PASS complete five-action beginner flow and structural checking');
+
+  await fresh.waitForTimeout(450);
+  await fresh.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await fresh.locator('#quickstart-card').isVisible(),true,'Guide must persist across refreshes');
+  assert.equal(await fresh.evaluate(()=>window.BranchLabDebug.state().quickStartStep),'done');
+  assert.equal((await fresh.evaluate(()=>window.BranchLabDebug.getBoard())).nodes.find(n=>n.type==='decision').title,'Can we solve it?');
+  assert.equal((await fresh.evaluate(()=>window.BranchLabDebug.getBoard())).nodes.find(n=>n.type==='end').title,'Update the customer');
+  const beginnerPdf=fresh.waitForEvent('download',{timeout:15000});
+  await fresh.locator('#quickstart-card [data-action="export-pdf"]').click();
+  const savedPdf=await beginnerPdf;
+  assert.ok(savedPdf.suggestedFilename().endsWith('.pdf'));
+  assert.equal((await (await import('node:fs/promises')).readFile(await savedPdf.path())).subarray(0,5).toString('utf8'),'%PDF-');
+  await fresh.locator('#quickstart-card [data-action="run"]').click();
+  assert.equal(await fresh.locator('#run-panel').isVisible(),true,'Completed beginner flow can be simulated');
+  await fresh.locator('#run-panel [data-action="stop-run"]').last().click();
+  console.log('PASS beginner save/refresh, genuine PDF export and runnable flow');
+
+  await fresh.setViewportSize({width:390,height:844});
+  await fresh.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await fresh.locator('#quickstart-card').isVisible(),true);
+  const quickPanel=await fresh.locator('#quickstart-card').boundingBox();
+  const stage=await fresh.locator('#stage').boundingBox();
+  assert.ok(quickPanel.width<=stage.width+1,'Mobile guide fits inside viewport');
+  await fresh.screenshot({path:'branchlab-guided-blank-mobile.png',fullPage:true});
+  assert.deepEqual(beginnerErrors,[],'No errors in beginner journey');
+  await beginner.close();
+  console.log('PASS responsive beginner board, connected route and clean browser console');
 
   assert.deepEqual(errors,[],'No uncaught JavaScript errors');
   console.log('PASS No uncaught browser JavaScript exceptions');
