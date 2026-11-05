@@ -105,7 +105,8 @@ function renderSummary(){
   const board=current(),check=validateBoard(board);
   $('node-summary').textContent=board.nodes.length+' nodes · '+board.edges.length+' connections';
   const audit=analyzeOutcomes(board);
-  $('validity-summary').textContent=check.errors?check.errors+' issue'+(check.errors===1?'':'s')+' to fix':check.warnings?check.warnings+' suggestion'+(check.warnings===1?'':'s'):audit.total?audit.covered+'/'+audit.total+' decision routes validated':'Flow looking good';
+  const issueTotal=check.issues.filter(i=>i.severity!=='info').length;
+  $('validity-summary').textContent=!board.nodes.length?'Add your first step':issueTotal?issueTotal+' issue'+(issueTotal===1?'':'s')+' to review':audit.total?audit.covered+'/'+audit.total+' decision routes validated':'Flow looking good';
   $('issue-count').textContent=check.errors+check.warnings;
   $('bottom-status').textContent=state.connectFrom?'Select a destination node to connect':state.run?'Simulation is active':state.selected?'Node selected — edit in Properties':state.selectedEdge?'Connection selected':'Ready to create';
   $('zoom-label').textContent=Math.round(state.view.scale*100)+'%';
@@ -527,7 +528,12 @@ function takeEdge(id){
   if(run.path.length>=70)return notify('Simulation stopped after 70 steps to prevent an endless loop.',true);
   run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();centerOnNode(edge.to);
   if(runCurrent()?.type==='end'){
-    if(state.demo && state.demo.boardId===state.activeId){state.demo.step=4;renderExperience();}
+    if(state.demo && state.demo.boardId===state.activeId){
+      state.demo.step=4;
+      renderExperience();
+      renderRunPanel();
+      fitView(true);
+    }
     notify('Flow completed! You reached the end.');
   }
 }
@@ -543,9 +549,14 @@ function stepBack(){
   if(!state.run||state.run.path.length===1)return;
   state.run.path.pop();state.run.edges.pop();renderStage();renderSummary();centerOnNode(runCurrent()?.id);
 }
-function stopRun(){state.run=null;render();fitView();}
+function stopRun(){
+  state.run=null;
+  if(state.demo?.boardId===state.activeId&&state.demo.step===3)state.demo.step=2;
+  render();fitView(true);
+}
 function renderRunPanel(){
-  const panel=$('run-panel');if(!state.run){panel.hidden=true;return;}
+  const panel=$('run-panel');
+  if(!state.run || (state.demo?.boardId===state.activeId&&state.demo.step>=4)){panel.hidden=true;return;}
   const node=runCurrent();if(!node){panel.hidden=true;return;}
   panel.hidden=false;
   const edges=outgoing(current(),node.id),done=node.type==='end';
@@ -695,9 +706,9 @@ function startChallenge(){
   state.experienceDismissed=false;
   state.demo={boardId:b.id,step:0};
   render();
-  fitView();
+  fitView(true);
   queueSave();
-  notify('A broken workflow is on your canvas. Find the missing paths.');
+  notify('See the full six-step flow, then find the missing No route.');
 }
 function inspectChallenge(){
   if(!state.demo || state.demo.boardId!==state.activeId)return;
@@ -752,6 +763,9 @@ function renderExperience(){
   const root=$('experience-card');
   if(!root)return;
   const inChallenge=state.demo && state.demo.boardId===state.activeId;
+  document.body.classList.toggle('guided-demo',!!inChallenge&&!state.experienceDismissed);
+  document.body.classList.toggle('guided-demo-running',!!inChallenge&&!state.experienceDismissed&&state.demo.step===3&&!!state.run);
+  root.classList.toggle('is-challenge',!!inChallenge);
   root.hidden=!!state.experienceDismissed;
   if(root.hidden)return;
   const close='<button class="demo-close" data-action="dismiss-experience" aria-label="Dismiss guide" title="Dismiss">'+icon('x')+'</button>';
@@ -820,7 +834,9 @@ function dispatchAction(action,el){
   switch(action){
     case 'challenge':startChallenge();break;
     case 'start-blank':startBlankBoard();break;
-    case 'dismiss-experience':state.experienceDismissed=true;state.demo=null;queueSave();renderExperience();break;
+    case 'dismiss-experience':
+      state.experienceDismissed=true;state.demo=null;state.run=null;
+      queueSave();render();fitView(true);break;
     case 'inspect-challenge':inspectChallenge();break;
     case 'repair-challenge':repairChallenge();break;
     case 'run-challenge':runChallenge();break;
