@@ -169,6 +169,41 @@ try{
   assert.equal((await page.evaluate(()=>window.BranchLabDebug.getBoard())).nodes.length,afterBranch.nodes.length+1);
   console.log('PASS copy/paste an editable node');
 
+  // Multi-select linked nodes, move together, and duplicate their internal edge.
+  await page.locator('.stage-controls [data-action="fit"]').last().click();
+  await page.locator('.node[data-id="a"]').click();
+  await page.locator('.node[data-id="b"]').click({modifiers:['Shift']});
+  assert.equal(await page.locator('#nodes-layer .node.selected').count(),2);
+  assert.ok((await page.locator('#inspector-heading').innerText()).includes('2 steps'));
+  const groupStart=await page.evaluate(()=>{
+    const b=window.BranchLabDebug.getBoard();
+    return b.nodes.filter(n=>['a','b'].includes(n.id)).map(n=>[n.id,n.x,n.y]);
+  });
+  const groupBox=await page.locator('.node[data-id="a"]').boundingBox();
+  await page.mouse.move(groupBox.x+groupBox.width/2,groupBox.y+groupBox.height/2);
+  await page.mouse.down();
+  await page.mouse.move(groupBox.x+groupBox.width/2+75,groupBox.y+groupBox.height/2+28,{steps:5});
+  await page.mouse.up();
+  const groupMoved=await page.evaluate(()=>{
+    const b=window.BranchLabDebug.getBoard();
+    return b.nodes.filter(n=>['a','b'].includes(n.id)).map(n=>[n.id,n.x,n.y]);
+  });
+  assert.notDeepEqual(groupMoved,groupStart,'Dragging a selected node moves the group');
+  assert.equal(groupMoved[0][1]-groupStart[0][1],groupMoved[1][1]-groupStart[1][1]);
+  assert.equal(groupMoved[0][2]-groupStart[0][2],groupMoved[1][2]-groupStart[1][2]);
+  console.log('PASS shift multi-select and coordinated group drag');
+
+  const beforeGroupCopy=await page.evaluate(()=>window.BranchLabDebug.getBoard());
+  await page.locator('#details-tab [data-action="copy-node"]').click();
+  await page.evaluate(()=>document.querySelector('#menu-popover').hidden=false);
+  await page.locator('#menu-popover [data-action="paste-node"]').click();
+  const afterGroupCopy=await page.evaluate(()=>window.BranchLabDebug.getBoard());
+  assert.equal(afterGroupCopy.nodes.length,beforeGroupCopy.nodes.length+2);
+  assert.equal(afterGroupCopy.edges.length,beforeGroupCopy.edges.length+1,'Pasted group preserves internal connector');
+  assert.equal(await page.locator('#nodes-layer .node.selected').count(),2);
+  console.log('PASS group copy/paste preserves connecting edges');
+
+
   assert.deepEqual(errors,[],'No uncaught JavaScript errors');
   console.log('PASS No uncaught browser JavaScript exceptions');
 }catch(e){
