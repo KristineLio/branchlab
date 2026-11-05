@@ -1,6 +1,7 @@
 import {TEMPLATES,makeBoard} from './templates.js';
 import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange,addDecisionBranches,analyzeOutcomes} from './graph.js';
 import {jpegToPdf} from './pdf.js';
+import {getQuickStartStep,advanceQuickStart} from './quickstart.js';
 
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
@@ -77,7 +78,7 @@ function render(){
   if(state.selected===null)state.selectedIds=[];
   else if(!state.selectedIds.includes(state.selected))state.selectedIds=[state.selected];
   $('board-title').value=board.name;
-  renderBoards();renderStage();renderInspector();renderSummary();renderExperience();
+  renderBoards();renderStage();renderInspector();renderSummary();renderExperience();renderQuickStart();
   document.querySelector('.inspector').hidden=!state.inspectorOpen;
   document.body.classList.toggle('dark',state.theme==='dark');
   const demoFinished=state.demo?.boardId===state.activeId&&state.demo.step>=4;
@@ -111,7 +112,7 @@ function renderSummary(){
   $('validity-summary').textContent=!board.nodes.length?'Add your first step':issueTotal?issueTotal+' issue'+(issueTotal===1?'':'s')+' to review':audit.total?audit.covered+'/'+audit.total+' decision routes validated':'Flow looking good';
   $('issue-count').textContent=check.errors+check.warnings;
   $('bottom-status').textContent=state.demo?.boardId===state.activeId&&state.demo.step>=4?
-    'No decision route tested · Ready to export':
+    'Escalation route tested · Ready to export':
     state.connectFrom?'Select a destination node to connect':
     state.run?'Simulation is active':state.selected?'Node selected — edit in Properties':
     state.selectedEdge?'Connection selected':'Ready to create';
@@ -390,6 +391,17 @@ function pasteNode(){
 
 function fitView(overview=false){
   const rect=$('stage').getBoundingClientRect(),b=current();if(!rect.width||!rect.height)return;
+  const guided=!!b.quickStart&&!state.demo&&!state.run;
+  const topInset=guided?Math.min(rect.height*.40,rect.width<540?220:300):0;
+  const availableHeight=rect.height-topInset;
+  if(guided && rect.width<540 && b.nodes.length && !overview){
+    const focus=byId(b,state.selected)||b.nodes.find(n=>n.type==='start')||b.nodes[0];
+    const scale=.73;
+    state.view.scale=scale;
+    state.view.x=25-focus.x*scale;
+    state.view.y=topInset+availableHeight*.45-(focus.y+NODE_H/2)*scale;
+    applyTransform();return;
+  }
   if(rect.width<540 && b.nodes.length && !overview){
     const first=b.nodes.find(n=>n.type==='start')||b.nodes[0];
     state.view.scale=.75;
@@ -398,7 +410,7 @@ function fitView(overview=false){
     applyTransform();return;
   }
   const bounds=fitBounds(b.nodes,65);
-  const zoom=Math.max(.28,Math.min(1.14,(rect.width-88)/bounds.width,(rect.height-115)/bounds.height));
+  const zoom=Math.max(guided?.18:.28,Math.min(1.14,(rect.width-88)/bounds.width,(availableHeight-105)/bounds.height));
   if(!overview && zoom<.70 && b.nodes.length){
     // An entirely visible 1,600px diagram becomes unreadably small in a real editor.
     // Begin at a readable working zoom; the Fit All control still shows the overview.
@@ -411,7 +423,7 @@ function fitView(overview=false){
   }
   state.view.scale=zoom;
   state.view.x=(rect.width-bounds.width*zoom)/2-bounds.minX*zoom;
-  state.view.y=(rect.height-bounds.height*zoom)/2-bounds.minY*zoom;
+  state.view.y=topInset+(availableHeight-bounds.height*zoom)/2-bounds.minY*zoom;
   applyTransform();
 }
 function zoom(factor,clientX,clientY){
@@ -537,11 +549,16 @@ function takeEdge(id){
   run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();centerOnNode(edge.to);
   if(runCurrent()?.type==='end'){
     if(state.demo && state.demo.boardId===state.activeId){
-      state.demo.step=4;
-      render();
-      fitView(true);
-    }
-    notify('Flow completed! You reached the end.');
+      const noEdge=current().edges.find(e=>e.from==='c'&&e.label.trim().toLowerCase()==='no');
+      if(noEdge&&run.edges.includes(noEdge.id)){
+        state.demo.step=4;
+        render();fitView(true);
+        notify('Escalation path verified! The customer receives an update.');
+      }else{
+        renderExperience();renderRunPanel();fitView(true);
+        notify('Yes route completed. Restart and choose No to test the missing escalation.',true);
+      }
+    }else notify('Flow completed! You reached the end.');
   }
 }
 function stepForward(){
@@ -692,16 +709,103 @@ function setTab(name){state.tab=name;state.inspectorOpen=true;renderInspector();
  * A genuine three-step judge walkthrough. Every action operates on an editable
  * copy of the graph, never on somebody's existing work.
  */
+function renderQuickStart(){
+  const root=$('quickstart-card'),board=current();
+  if(!root)return;
+  const active=!!board?.quickStart&&!state.demo&&!state.run;
+  root.hidden=!active;
+  document.body.classList.toggle('quickstart-mode',active);
+  if(!active)return;
+  const stage=getQuickStartStep(board);
+  const steps=['start','process','decision','branches','finish','check'];
+  const index=steps.indexOf(stage);
+  const texts={
+    start:['What begins this process?','Add a start point','For example, a customer makes a request.'],
+    process:['What happens first?','Connect the first action','The editor connects this step automatically.'],
+    decision:['Where does the path split?','Add a Yes / No decision','Write a clear question with two possible answers.'],
+    branches:['What happens for each answer?','Build both outcomes','BranchLab creates and labels both connections.'],
+    finish:['How do both paths end?','Connect the finish','Each route will lead to one editable End step.'],
+    check:['Your diagram is ready to test','Check the flow','Verify that both decision outcomes reach an End.'],
+    fix:['A few paths still need attention','Review the issues','The Inspector explains what is unfinished.'],
+    done:['Your first working flow is ready!','Run it or export it','Everything is editable, saved locally, and free to export.']
+  };
+  const [heading,cta,subtext]=texts[stage];
+  const defaults={start:'A request arrives',process:'Review the request',decision:'Can we proceed?',finish:'Share the outcome'};
+  const titleInput=['start','process','decision','finish'].includes(stage)?
+    '<label class="quickstart-label" for="quickstart-title">STEP NAME</label>'+
+    '<input class="quickstart-field" id="quickstart-title" maxlength="100" value="'+esc(defaults[stage])+'" aria-label="Name this step">':'';
+  const branchesInput=stage==='branches'?
+    '<div class="quickstart-branch-fields"><label>YES PATH<input class="quickstart-field" id="quickstart-yes" maxlength="100" value="Proceed with the request"></label>'+
+    '<label>NO PATH<input class="quickstart-field" id="quickstart-no" maxlength="100" value="Escalate for review"></label></div>':'';
+  const coverage=analyzeOutcomes(board);
+  const complete=stage==='done';
+  const review=stage==='fix';
+  const progress=complete?6:review?5:Math.max(0,index);
+  root.innerHTML='<div class="quickstart-top"><span>'+icon('spark')+' FIRST FLOW · '+(complete?'COMPLETE':Math.min(progress+1,6)+'/6')+'</span>'+
+      '<button type="button" data-action="quickstart-dismiss" aria-label="Close beginner guide">'+icon('x')+'</button></div>'+
+    '<div class="quickstart-meter"><span style="width:'+Math.round((progress/6)*100)+'%"></span></div>'+
+    '<h2>'+esc(heading)+'</h2><p>'+esc(subtext)+'</p>'+
+    (complete?'<div class="quickstart-complete">'+icon('check')+' Both outcomes reach an End · '+coverage.covered+'/'+coverage.total+' routes verified</div>':'')+
+    (review?'<div class="quickstart-warning">'+validateBoard(board).issues.length+' issue(s) to review before sharing.</div>':'')+
+    titleInput+branchesInput+
+    '<div class="quickstart-actions">'+
+      (complete?'<button class="button primary" data-action="run">'+icon('play')+' Run your flow</button>'+
+        '<button class="button outline" data-action="export-pdf">'+icon('download')+' Export PDF</button>':
+        '<button class="button primary" data-action="quickstart-advance">'+icon(review?'search':stage==='check'?'search':'plus')+' '+esc(cta)+' →</button>')+
+      '<button class="button subtle" data-action="quickstart-dismiss">'+(complete?'Close guide':'Build manually')+'</button></div>'+
+    '<small class="quickstart-note">Use the Properties panel to rename any step. Undo is always available.</small>';
+}
+function advanceBeginnerFlow(){
+  const board=current();
+  if(!board.quickStart)return;
+  const phase=getQuickStartStep(board);
+  if(phase==='fix'){
+    state.tab='issues';state.inspectorOpen=true;
+    render();notify('Review the highlighted steps in Flow Inspector.');
+    return;
+  }
+  if(phase==='done')return;
+  const input=id=>$(id)?.value||'';
+  const labels={title:input('quickstart-title'),yes:input('quickstart-yes'),no:input('quickstart-no')};
+  record();
+  const result=advanceQuickStart(board,labels);
+  if(phase==='branches'&&!result.created.length){
+    stack().undo.pop();
+    notify(result.message,true);
+    return;
+  }
+  state.run=null;state.connectFrom=null;state.selectedEdge=null;
+  if(phase==='check'){
+    state.selected=null;state.selectedIds=[];
+    state.tab='issues';state.inspectorOpen=true;
+  }else{
+    state.selected=result.created.at(-1)?.id||null;
+    state.selectedIds=state.selected?[state.selected]:[];
+    state.tab='details';
+  }
+  queueSave();render();fitView(window.innerWidth>=640);
+  notify(result.message);
+}
+function dismissBeginnerFlow(){
+  const board=current();
+  if(!board.quickStart)return;
+  record();board.quickStart=false;
+  queueSave();render();
+  notify('Beginner guide closed. Your diagram stays editable.');
+}
+
 function startBlankBoard(){
-  const b=makeBoard('blank','Untitled flow');
-  state.boards.unshift(b);state.activeId=b.id;state.selected=null;state.selectedEdge=null;
+  const b=makeBoard('blank','My new workflow');
+  b.quickStart=true;b.quickStartChecked=false;
+  state.boards.unshift(b);state.activeId=b.id;state.selected=null;state.selectedIds=[];state.selectedEdge=null;
   state.connectFrom=null;state.run=null;state.demo=null;state.experienceDismissed=true;
+  state.tab='details';state.inspectorOpen=window.innerWidth>640;
   state.view={x:50,y:50,scale:1};
-  render();fitView();queueSave();notify('Blank board ready. Click Add a first step to begin.');
+  render();fitView();queueSave();notify('Guided blank board ready. Name your starting point.');
 }
 
 function startChallenge(){
-  const b=makeBoard('challenge','The broken launch');
+  const b=makeBoard('challenge','Support escalation demo');
   state.boards.unshift(b);
   state.activeId=b.id;
   state.selected=null;
@@ -727,8 +831,8 @@ function inspectChallenge(){
   notify('Flow Inspector has identified the missing connections.');
 }
 function challengeMissingLinks(board=current()){
-  return [{from:'c',to:'e',label:'No',text:'Ready to ship? → No → Fix the blockers'},
-    {from:'e',to:'f',label:'',text:'Fix the blockers → Launch confirmed'}]
+  return [{from:'c',to:'e',label:'No',text:'Unresolved request → Escalate to specialist'},
+    {from:'e',to:'f',label:'',text:'Escalate to specialist → Update the customer'}]
     .filter(e=>!connected(board,e.from,e.to));
 }
 function repairChallenge(){
@@ -800,35 +904,38 @@ function renderExperience(){
     '<span><strong>'+audit.covered+'/'+audit.total+'</strong> routes reach End</span></div>';
   if(step===0){
     root.innerHTML=close+'<div class="demo-eyebrow">01 / 04 · FIND THE RISK</div>'+
-      '<h2 class="demo-title">Would you launch this workflow?</h2>'+
-      '<p class="demo-desc">A six-step release process looks finished, but the No decision has nowhere to go. Find out what the diagram hides.</p>'+
+      '<h2 class="demo-title">What if the first reply doesn’t solve it?</h2>'+
+      '<p class="demo-desc">This customer-support process looks complete, but an unresolved request has no path to an owner. Find the missing escalation.</p>'+
       stats+progress+'<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Inspect the real flow →</button></div>'+
       '<p class="demo-note">Uses exactly the same Flow Inspector as your own boards.</p>';
   }else if(step===1){
     const next=missing[0];
     root.innerHTML=close+'<div class="demo-eyebrow">02 / 04 · FIX THE MISSING LINKS</div>'+
-      '<h2 class="demo-title">A decision without an outcome is a risk.</h2>'+
-      '<p class="demo-desc">Repair the graph one connection at a time. See the warnings update after every real edit.</p>'+
+      '<h2 class="demo-title">A customer could be left waiting.</h2>'+
+      '<p class="demo-desc">Restore the escalation and customer-update connections one at a time. Watch the real warning count change.</p>'+
       stats+progress+'<div class="demo-fix-target"><span>LINK TO RESTORE</span><strong>'+esc(next?.text||'Review remaining issues in the inspector')+'</strong></div>'+
       (next?'<div class="demo-buttons"><button class="button primary" data-action="repair-challenge">'+icon('link')+' Connect this path →</button></div>':
        '<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Review remaining issues</button></div>')+
       '<p class="demo-note">'+(2-missing.length)+'/2 links restored. Or drag ports to connect them yourself.</p>';
   }else if(step===2){
     root.innerHTML=close+'<div class="demo-eyebrow">03 / 04 · TEST THE DECISION</div>'+
-      '<h2 class="demo-title">The flow is repaired. Does it work?</h2>'+
-      '<p class="demo-desc">Both Yes and No now lead toward an End. Simulate the No branch to confirm that blockers have a real outcome.</p>'+
+      '<h2 class="demo-title">The escalation path is repaired.</h2>'+
+      '<p class="demo-desc">Both outcomes now reach an End. Simulate No to confirm the request gets escalated and the customer receives an update.</p>'+
       stats+progress+(issues.length?'<div class="demo-warning">Fix '+issues.length+' issue(s) in Flow check before running.</div>':
       '<div class="demo-success">✓ Inspector clean · Both routes reach an End</div>')+
       '<div class="demo-buttons"><button class="button primary" data-action="run-challenge" '+(issues.length?'disabled':'')+'>'+icon('play')+' Simulate the No outcome →</button></div>';
   }else if(step===3){
     root.innerHTML=close+'<div class="demo-eyebrow">04 / 04 · TRACE THE OUTCOME</div>'+
-      '<h2 class="demo-title">Follow the No branch.</h2>'+
-      '<p class="demo-desc">Use Next step in the simulation panel. At “Ready to ship?” choose No, then follow Fix the blockers to Launch confirmed.</p>'+
-      stats+progress+'<div class="demo-buttons"><button class="button outline" data-action="stop-run">Pause & edit</button></div>';
+      '<h2 class="demo-title">Follow the unresolved request.</h2>'+
+      '<p class="demo-desc">Use Next step, choose No at “Resolved on first reply?”, then follow Escalate to specialist to Update the customer.</p>'+
+      stats+progress+'<div class="demo-buttons">'+
+      (runCurrent()?.type==='end'?
+      '<button class="button primary" data-action="run-challenge">'+icon('play')+' Restart · choose No</button>':
+      '<button class="button outline" data-action="stop-run">Pause & edit</button>')+'</div>';
   }else{
     root.innerHTML=close+'<div class="demo-eyebrow">MISSION COMPLETE · USE IT FOR REAL WORK</div>'+
-      '<h2 class="demo-title">You caught a gap before launch.</h2>'+
-      '<p class="demo-desc">Two missing connectors were repaired, the No route was tested, and both outcomes now reach End. That is the difference between drawing and verifying a process.</p>'+
+      '<h2 class="demo-title">You caught the missing escalation.</h2>'+
+      '<p class="demo-desc">You exposed an unhandled support request, fixed both missing links, and tested the escalation path. Use the same checks on your own processes.</p>'+
       stats+progress+'<div class="demo-success">✓ Inspector clean · Both outcomes reach End</div>'+
       '<div class="demo-buttons"><button class="button primary" data-action="export-pdf">'+icon('download')+' Export as PDF</button>'+
       '<button class="button outline" data-action="templates">'+icon('plus')+' Make your own flow</button>'+
@@ -841,6 +948,8 @@ function dispatchAction(action,el){
   switch(action){
     case 'challenge':startChallenge();break;
     case 'start-blank':startBlankBoard();break;
+    case 'quickstart-advance':advanceBeginnerFlow();break;
+    case 'quickstart-dismiss':dismissBeginnerFlow();break;
     case 'dismiss-experience':
       state.experienceDismissed=true;state.demo=null;state.run=null;
       queueSave();render();fitView(true);break;
@@ -894,7 +1003,7 @@ function bind(){
   $('stage').addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
   $('stage').addEventListener('drop',e=>{e.preventDefault();const type=e.dataTransfer.getData('text/plain');if(NODE_TYPES[type])addNode(type,screenToWorld(e.clientX,e.clientY));});
   $('stage').addEventListener('pointerdown',e=>{
-    if(e.button!==0 || e.target.closest('.node') || e.target.closest('.experience-card') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
+    if(e.button!==0 || e.target.closest('.node') || e.target.closest('.experience-card') || e.target.closest('#quickstart-card') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
     if(state.connectFrom){state.connectFrom=null;render();return;}
     state.selected=null;state.selectedIds=[];state.selectedEdge=null;render();
     move={kind:'pan',x:e.clientX,y:e.clientY,viewX:state.view.x,viewY:state.view.y};
@@ -1002,4 +1111,4 @@ if(startupParams.get('demo')==='1'){
   startChallenge();
 }else{render();requestAnimationFrame(()=>fitView());}
 window.BranchLabDebug={getBoard:()=>clone(current()),validate:()=>validateBoard(current()),coverage:()=>analyzeOutcomes(current()),
-  state:()=>({activeId:state.activeId,run:clone(state.run),selected:state.selected,demo:clone(state.demo),view:clone(state.view)})};
+  state:()=>({activeId:state.activeId,run:clone(state.run),selected:state.selected,demo:clone(state.demo),view:clone(state.view),quickStartStep:getQuickStartStep(current())})};

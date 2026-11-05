@@ -4,7 +4,7 @@
 
 BranchLab is a privacy-friendly, offline-capable visual flowchart editor built for the SkyCastle **Cancel My Subscription** Hackathon (Nov 4–7, 2026). It replaces the personal flowchart design and export workflow of Whimsical Pro with a fast, no-account browser tool.
 
-**Core features:** drag-and-drop graph editor, one-click linked next steps, directional connections and labelled decisions, deterministic auto-arrange, **Flow Inspector with Yes/No route-to-End coverage and quick fixes**, interactive Run Flow simulation, prebuilt templates, multiple boards, local autosave, undo/redo, JSON import/export, SVG, PNG and **print-ready PDF exports**, and multi-node copy/paste that preserves connections between selected steps.
+**Core features:** drag-and-drop graph editor, one-click linked next steps, directional connections and labelled decisions, deterministic auto-arrange, **Flow Inspector with Yes/No route-to-End coverage and quick fixes**, interactive Run Flow simulation, **step-by-step blank-board builder**, prebuilt templates, multiple boards, local autosave, undo/redo, JSON import/export, SVG, PNG and **print-ready PDF exports**, and multi-node copy/paste that preserves connections between selected steps.
 
 **Stack:** semantic HTML, custom CSS, vanilla JavaScript ES modules. No account, backend, paid APIs or runtime library required. Optional web fonts fall back to system fonts when offline.
 
@@ -14,14 +14,27 @@ BranchLab is a privacy-friendly, offline-capable visual flowchart editor built f
 
 The first-run card now highlights **Try the 45-second demo**, with Template and Blank as alternatives. The four-step story runs on real editable data:
 
-1. **Find** — open a six-node launch workflow with three genuine structural issues. Inspect the actual diagram.
+1. **Find** — open a six-node customer-support escalation workflow with three genuine structural issues. The unresolved request has no path to an owner. Inspect the editable diagram.
 2. **Fix** — press "Connect this path" twice. Each action adds **one** real edge, updates the warnings, and changes route coverage from **1/2** to **2/2** outcomes reaching an End.
-3. **Test** — simulate Start → Review → Decision, choose **No**, follow "Fix the blockers" to "Launch confirmed".
+3. **Test** — simulate **Customer asks for help → Investigate the issue → Resolved on first reply?**, choose **No**, then follow **Escalate to specialist → Update the customer**.
 4. **Share** — export the repaired flow to a printable PDF or open another editable template.
 
-This isn't a fake animated demo. It exercises the exact graph editor, conservative route checker, simulation, and export code available for personal diagrams. The Inspector now links to affected nodes and provides context-aware quick actions for incomplete decisions and dead ends. Note that **route coverage is a structural check, not a guarantee of real-world business correctness**.
+The support example is a simplified illustration of escalation rather than a substitute for an actual support policy. This isn't a fake animated demo. It exercises the exact graph editor, conservative route checker, simulation, and export code available for personal diagrams. The Inspector now links to affected nodes and provides context-aware quick actions for incomplete decisions and dead ends. Note that **route coverage is a structural check, not a guarantee of real-world business correctness**.
 
 Closing the guide stays remembered across refreshes. The direct demo link deliberately creates a separate challenge board, preserving any previous workspace content.
+
+## Create your first useful flow from blank
+
+Select **Blank board** from the first-use card. A lightweight, dismissible guide helps you build a real diagram in six simple actions:
+
+1. Name the **Start**.
+2. Name and connect the **first action**.
+3. Add a **decision** with a meaningful question.
+4. Name the **Yes** and **No** paths; BranchLab adds two real links.
+5. Connect both outcomes to an editable **End**.
+6. Check the **Flow Inspector** to verify both routes reach an ending.
+
+The guide never changes users' boards without a click, all steps can be renamed, and the diagram is saved locally. On completion, users can simulate the result or export a printable PDF. The guide persists through refresh, can be dismissed at any time, and supports undo.
 
 ### Useful shortcuts
 
