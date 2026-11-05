@@ -11,7 +11,7 @@ const xml=esc;
 const byId=(board,id)=>board.nodes.find(n=>n.id===id);
 let boardData;
 let state={
-  boards:[],activeId:'',selected:null,selectedEdge:null,tab:'details',
+  boards:[],activeId:'',selected:null,selectedIds:[],selectedEdge:null,tab:'details',
   inspectorOpen:true,connectFrom:null,run:null,demo:null,experienceDismissed:false,theme:'light',view:{x:80,y:65,scale:.85}
 };
 let move=null,spaceHeld=false,saveTimer=null,toastTimer=null;
@@ -73,6 +73,8 @@ function notify(msg,error=false){
 }
 function render(){
   const board=current();if(!board)return;
+  if(state.selected===null)state.selectedIds=[];
+  else if(!state.selectedIds.includes(state.selected))state.selectedIds=[state.selected];
   $('board-title').value=board.name;
   renderBoards();renderStage();renderInspector();renderSummary();renderExperience();
   document.querySelector('.inspector').hidden=!state.inspectorOpen;
@@ -124,7 +126,7 @@ function renderStage(){
   board.nodes.forEach((node,index)=>{
     const el=document.createElement('div');
     el.className='node '+node.type+
-      (state.selected===node.id?' selected':'')+
+      (state.selectedIds.includes(node.id)?' selected':'')+
       (state.run&&state.run.path.includes(node.id)?' run-visited':'')+
       (state.run&&runCurrent()?.id===node.id?' run-current':'');
     el.dataset.id=node.id;el.style.left=node.x+'px';el.style.top=node.y+'px';
@@ -216,15 +218,30 @@ function nodePointerDown(event,id){
   if(state.run){selectNode(id);return;}
   if(event.target.closest('[data-port]')){event.stopPropagation();return;}
   event.stopPropagation();event.preventDefault();
+  if(event.shiftKey){toggleNodeSelection(id);return;}
   const board=current(),node=byId(board,id);
-  selectNode(id);
-  move={kind:'node',id,x:event.clientX,y:event.clientY,nodeX:node.x,nodeY:node.y,recorded:false};
+  const grouped=state.selectedIds.length>1&&state.selectedIds.includes(id);
+  if(grouped){
+    state.selected=id;state.selectedEdge=null;state.tab='details';state.inspectorOpen=true;render();
+    move={kind:'group',x:event.clientX,y:event.clientY,recorded:false,
+      positions:state.selectedIds.map(key=>{const n=byId(board,key);return {id:key,x:n.x,y:n.y};})};
+  }else{
+    selectNode(id);
+    move={kind:'node',id,x:event.clientX,y:event.clientY,nodeX:node.x,nodeY:node.y,recorded:false};
+  }
 }
 function selectNode(id){
-  state.selected=id;state.selectedEdge=null;
+  state.selected=id;state.selectedIds=[id];state.selectedEdge=null;
   state.tab='details';
   if(!state.inspectorOpen)state.inspectorOpen=true;
   render();
+}
+function toggleNodeSelection(id){
+  if(state.run)return;
+  const ids=new Set(state.selectedIds);
+  if(ids.has(id))ids.delete(id);else ids.add(id);
+  state.selectedIds=Array.from(ids);state.selected=state.selectedIds.at(-1)||null;
+  state.selectedEdge=null;state.tab='details';state.inspectorOpen=true;render();
 }
 function connectNodes(from,to){
   const b=current(),a=byId(b,from),dest=byId(b,to);
@@ -303,34 +320,52 @@ function addNode(type,position){
 function deleteSelection(){
   if(!state.selected&&!state.selectedEdge)return;
   record();const b=current();
-  if(state.selected){const id=state.selected;b.nodes=b.nodes.filter(n=>n.id!==id);b.edges=b.edges.filter(e=>e.from!==id&&e.to!==id);}
-  else b.edges=b.edges.filter(e=>e.id!==state.selectedEdge);
-  state.selected=null;state.selectedEdge=null;state.run=null;
-  queueSave();render();notify('Deleted from board.');
+  if(state.selected){
+    const ids=new Set(state.selectedIds);
+    b.nodes=b.nodes.filter(n=>!ids.has(n.id));
+    b.edges=b.edges.filter(e=>!ids.has(e.from)&&!ids.has(e.to));
+  }else b.edges=b.edges.filter(e=>e.id!==state.selectedEdge);
+  state.selected=null;state.selectedIds=[];state.selectedEdge=null;state.run=null;
+  queueSave();render();notify('Deleted selection from board.');
 }
-function duplicateNode(){
-  const node=byId(current(),state.selected);if(!node)return;
-  record();const copy={...node,id:uid('node'),x:node.x+42,y:node.y+155,title:node.title+' copy'};
-  current().nodes.push(copy);state.selected=copy.id;queueSave();render();notify('Node duplicated.');
+function snapshotSelection(){
+  const ids=new Set(state.selectedIds);
+  const nodes=current().nodes.filter(n=>ids.has(n.id));
+  return {nodes:clone(nodes),edges:clone(current().edges.filter(e=>ids.has(e.from)&&ids.has(e.to)))};
 }
-function copyNode(){
-  const node=byId(current(),state.selected);
-  if(!node)return notify('Select a node to copy first.',true);
-  nodeClipboard=clone(node);
-  notify('Node copied. Press Ctrl/Cmd + V to paste a new one.');
-}
-function pasteNode(){
-  if(!nodeClipboard)return notify('Copy a node first with Ctrl/Cmd + C.',true);
-  const b=current();
-  let x=nodeClipboard.x+55,y=nodeClipboard.y+155,tries=0;
-  while(tries<60 && b.nodes.some(n=>Math.abs(n.x-x)<NODE_W+20&&Math.abs(n.y-y)<NODE_H+20)){
-    y+=160;tries++;
+function insertSnapshot(snapshot,duplicate=false){
+  if(!snapshot?.nodes?.length)return false;
+  const b=current(),dx=60;
+  let dy=155,tries=0;
+  while(tries<80 && snapshot.nodes.some(n=>b.nodes.some(existing=>
+    Math.abs(existing.x-(n.x+dx))<NODE_W+20 && Math.abs(existing.y-(n.y+dy))<NODE_H+20))){
+    dy+=155;tries++;
   }
   record();
-  const node={...clone(nodeClipboard),id:uid('node'),x,y};
-  b.nodes.push(node);state.selected=node.id;state.selectedEdge=null;state.run=null;
-  state.tab='details';state.inspectorOpen=true;
-  queueSave();render();centerOnNode(node.id);notify('Copied node pasted. Connect it when ready.');
+  const idMap=new Map(snapshot.nodes.map(n=>[n.id,uid('node')]));
+  const copies=snapshot.nodes.map(n=>({...clone(n),id:idMap.get(n.id),x:n.x+dx,y:n.y+dy,
+    title:duplicate?n.title+' copy':n.title}));
+  const connections=snapshot.edges.map(e=>({...clone(e),id:uid('edge'),from:idMap.get(e.from),to:idMap.get(e.to)}));
+  b.nodes.push(...copies);b.edges.push(...connections);
+  state.selectedIds=copies.map(n=>n.id);state.selected=copies.at(-1).id;
+  state.selectedEdge=null;state.run=null;state.tab='details';state.inspectorOpen=true;
+  queueSave();render();centerOnNode(copies[0].id);
+  return true;
+}
+function duplicateNode(){
+  const data=snapshotSelection();
+  if(!insertSnapshot(data,true))return notify('Select one or more nodes to duplicate.',true);
+  notify(data.nodes.length>1?'Selection and its internal links duplicated.':'Node duplicated.');
+}
+function copyNode(){
+  const data=snapshotSelection();
+  if(!data.nodes.length)return notify('Select one or more nodes to copy first.',true);
+  nodeClipboard=data;
+  notify(data.nodes.length+' node'+(data.nodes.length===1?'':'s')+' copied with internal connections. Press Ctrl/Cmd + V to paste.');
+}
+function pasteNode(){
+  if(!nodeClipboard?.nodes?.length)return notify('Copy one or more nodes first with Ctrl/Cmd + C.',true);
+  if(insertSnapshot(nodeClipboard))notify(nodeClipboard.nodes.length+' node'+(nodeClipboard.nodes.length===1?'':'s')+' pasted.');
 }
 
 function fitView(overview=false){
@@ -377,7 +412,14 @@ function renderInspector(){
   const node=byId(current(),state.selected);
   const edge=current().edges.find(e=>e.id===state.selectedEdge);
   if(state.tab==='details'){
-    if(node){
+    if(state.selectedIds.length>1){
+      $('inspector-heading').textContent='Edit '+state.selectedIds.length+' steps';
+      details.innerHTML='<div class="bulk-selection-summary"><strong>'+state.selectedIds.length+' steps selected</strong>'+
+        '<p>Drag any selected step to move them together. Internal connectors stay linked. Hold Shift and click a step to change the selection.</p></div>'+
+        '<button class="button primary" data-action="copy-node" style="width:100%;margin-bottom:8px">'+icon('copy')+' Copy group</button>'+
+        '<button class="button outline" data-action="duplicate-node" style="width:100%;margin-bottom:8px">'+icon('copy')+' Duplicate connected group</button>'+
+        '<button class="button outline" data-action="delete-selected" style="width:100%">'+icon('trash')+' Delete group</button>';
+    }else if(node){
       $('inspector-heading').textContent='Edit '+NODE_TYPES[node.type].label.toLowerCase();
       const symbol={start:'play',process:'box',decision:'branch',end:'flag',note:'note'}[node.type];
       details.innerHTML=
@@ -785,7 +827,7 @@ function bind(){
   $('stage').addEventListener('pointerdown',e=>{
     if(e.button!==0 || e.target.closest('.node') || e.target.closest('.experience-card') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
     if(state.connectFrom){state.connectFrom=null;render();return;}
-    state.selected=null;state.selectedEdge=null;renderInspector();
+    state.selected=null;state.selectedIds=[];state.selectedEdge=null;render();
     move={kind:'pan',x:e.clientX,y:e.clientY,viewX:state.view.x,viewY:state.view.y};
   });
   window.addEventListener('pointermove',e=>{
@@ -809,6 +851,18 @@ function bind(){
       const el=Array.from(document.querySelectorAll('#nodes-layer .node')).find(n=>n.dataset.id===node.id);
       if(el){el.style.left=node.x+'px';el.style.top=node.y+'px';}
       renderEdges();
+    }else if(move.kind==='group'){
+      if(!move.recorded&&(Math.abs(dx)>2||Math.abs(dy)>2)){record();move.recorded=true;}
+      if(!move.recorded)return;
+      const deltaX=Math.round(dx/state.view.scale/10)*10;
+      const deltaY=Math.round(dy/state.view.scale/10)*10;
+      for(const original of move.positions){
+        const node=byId(current(),original.id);if(!node)continue;
+        node.x=original.x+deltaX;node.y=original.y+deltaY;
+        const el=Array.from(document.querySelectorAll('#nodes-layer .node')).find(n=>n.dataset.id===node.id);
+        if(el){el.style.left=node.x+'px';el.style.top=node.y+'px';}
+      }
+      renderEdges();
     }
   });
   window.addEventListener('pointerup',e=>{
@@ -817,7 +871,7 @@ function bind(){
       if(target?.dataset.id && target.dataset.id!==state.connectFrom){connectNodes(state.connectFrom,target.dataset.id);}
       else $('preview-edge').setAttribute('d','');
     }
-    if(move?.kind==='node'&&move.recorded){queueSave();renderSummary();}
+    if((move?.kind==='node'||move?.kind==='group')&&move.recorded){queueSave();renderSummary();}
     move=null;
   });
   $('stage').addEventListener('wheel',e=>{
@@ -847,6 +901,11 @@ function bind(){
     }
     if(typing || document.querySelector('dialog[open]'))return;
     if(e.code==='Space'){spaceHeld=true;return;}
+    if(mod&&e.key.toLowerCase()==='a'){
+      e.preventDefault();state.selectedIds=current().nodes.map(n=>n.id);
+      state.selected=state.selectedIds.at(-1)||null;state.selectedEdge=null;
+      state.tab='details';state.inspectorOpen=true;render();return;
+    }
     if((e.key==='Delete'||e.key==='Backspace')&&(state.selected||state.selectedEdge)){e.preventDefault();deleteSelection();}
     if((e.key==='d'||e.key==='D')&&mod&&state.selected){e.preventDefault();duplicateNode();}
     if(e.key.toLowerCase()==='i'&&!mod){setTab('issues');}

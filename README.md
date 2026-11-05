@@ -4,7 +4,7 @@
 
 BranchLab is a privacy-friendly, offline-capable visual flowchart editor built for the SkyCastle **Cancel My Subscription** Hackathon (Nov 4–7, 2026). It replaces the personal flowchart design and export workflow of Whimsical Pro with a fast, no-account browser tool.
 
-**Core features:** drag-and-drop graph editor, one-click linked next steps, directional connections and labelled decisions, deterministic auto-arrange, Flow Inspector, interactive Run Flow simulation, prebuilt templates, multiple boards, local autosave, undo/redo, JSON import/export, SVG, PNG and **print-ready PDF exports**, and node copy/paste.
+**Core features:** drag-and-drop graph editor, one-click linked next steps, directional connections and labelled decisions, deterministic auto-arrange, Flow Inspector, interactive Run Flow simulation, prebuilt templates, multiple boards, local autosave, undo/redo, JSON import/export, SVG, PNG and **print-ready PDF exports**, and multi-node copy/paste that preserves connections between selected steps.
 
 **Stack:** semantic HTML, custom CSS, vanilla JavaScript ES modules. No account, backend, paid APIs or runtime library required. Optional web fonts fall back to system fonts when offline.
 
@@ -25,7 +25,9 @@ This is real user-editable graph data, not an animated promotional mockup. After
 | Ctrl/Cmd + Z | Undo |
 | Ctrl/Cmd + Shift + Z | Redo |
 | Ctrl/Cmd + D | Duplicate selected node |
-| Ctrl/Cmd + C / V | Copy / paste selected node |
+| Ctrl/Cmd + C / V | Copy / paste selected nodes and their internal links |
+| Shift + click | Multi-select connected or disconnected nodes |
+| Ctrl/Cmd + A | Select all nodes on the current board |
 | L | Start a connection from selected node |
 | Enter | Edit selected node or connector label |
 | Shift + A | Auto-arrange nodes |
@@ -33,6 +35,8 @@ This is real user-editable graph data, not an animated promotional mockup. After
 | Space + drag | Pan canvas |
 | Ctrl/Cmd + wheel | Zoom canvas |
 | Esc | Cancel linking or simulation |
+
+Drag any node in a multi-selection to move the entire set while keeping its connectors attached. Duplicate and delete also work for grouped selections.
 
 Zoom with the toolbar buttons; **Fit all** returns the full-board overview. Select a Decision node and click **Create Yes / No routes** to generate any missing linked outcomes in one action. The inspector keeps the existing connection labels, so you can revise each branch without recreating it.
 
