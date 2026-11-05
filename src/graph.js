@@ -116,3 +116,56 @@ export function fitBounds(nodes,pad=64) {
   const minX=Math.min(...xs)-pad,minY=Math.min(...ys)-pad;
   return {minX,minY,width:Math.max(...xs)+NODE_W+pad-minX,height:Math.max(...ys)+NODE_H+pad-minY};
 }
+
+
+/**
+ * Create a consistent left-to-right layout without needing a server or graph library.
+ * Breadth-first columns represent steps from Start; siblings retain their route order.
+ * Cycles are safe because each node is visited at most once.
+ */
+export function autoArrange(board) {
+  const nodes=board.nodes||[];
+  if(!nodes.length)return [];
+  const byId=new Map(nodes.map(n=>[n.id,n]));
+  const depth=new Map(), order=new Map();
+  const queue=nodes.filter(n=>n.type==='start').map(n=>n.id);
+  let index=0;
+  for(const id of queue)if(!depth.has(id)){depth.set(id,0);order.set(id,index++);}
+  while(queue.length){
+    const id=queue.shift();
+    const exits=(board.edges||[]).filter(e=>e.from===id&&byId.has(e.to)).sort((a,b)=>{
+      const rank=e=>(e.label||'').toLowerCase()==='yes'?0:(e.label||'').toLowerCase()==='no'?1:2;
+      return rank(a)-rank(b);
+    });
+    for(const edge of exits){
+      if(depth.has(edge.to))continue;
+      depth.set(edge.to,(depth.get(id)||0)+1);
+      order.set(edge.to,index++);
+      queue.push(edge.to);
+    }
+  }
+  const furthest=Math.max(0,...depth.values());
+  for(const node of nodes){
+    if(depth.has(node.id))continue;
+    depth.set(node.id,furthest+1);
+    order.set(node.id,index++);
+  }
+  const columns=new Map();
+  for(const node of nodes){
+    const d=depth.get(node.id);
+    if(!columns.has(d))columns.set(d,[]);
+    columns.get(d).push(node);
+  }
+  for(const group of columns.values()){
+    group.sort((a,b)=>order.get(a.id)-order.get(b.id));
+  }
+  const maxRows=Math.max(...Array.from(columns.values(),arr=>arr.length));
+  const positions=new Map();
+  for(const [d,group] of columns){
+    const startY=100+(maxRows-group.length)*92;
+    group.forEach((n,row)=>positions.set(n.id,{
+      x:80+d*304,y:startY+row*184
+    }));
+  }
+  return nodes.map(n=>({...n,...positions.get(n.id)}));
+}

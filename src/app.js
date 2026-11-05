@@ -1,5 +1,5 @@
 import {TEMPLATES,makeBoard} from './templates.js';
-import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds} from './graph.js';
+import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange} from './graph.js';
 
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
@@ -11,7 +11,7 @@ const byId=(board,id)=>board.nodes.find(n=>n.id===id);
 let boardData;
 let state={
   boards:[],activeId:'',selected:null,selectedEdge:null,tab:'details',
-  inspectorOpen:true,connectFrom:null,run:null,theme:'light',view:{x:80,y:65,scale:.85}
+  inspectorOpen:true,connectFrom:null,run:null,demo:null,experienceDismissed:false,theme:'light',view:{x:80,y:65,scale:.85}
 };
 let move=null,spaceHeld=false,saveTimer=null,toastTimer=null;
 const stacks=new Map();
@@ -72,7 +72,7 @@ function notify(msg,error=false){
 function render(){
   const board=current();if(!board)return;
   $('board-title').value=board.name;
-  renderBoards();renderStage();renderInspector();renderSummary();
+  renderBoards();renderStage();renderInspector();renderSummary();renderExperience();
   document.querySelector('.inspector').hidden=!state.inspectorOpen;
   document.body.classList.toggle('dark',state.theme==='dark');
   $('run-button').innerHTML=icon('play')+(state.run?' Running…':' Run flow');
@@ -92,6 +92,7 @@ function renderBoards(){
 function switchBoard(id){
   if(id===state.activeId)return;
   state.activeId=id;state.selected=null;state.selectedEdge=null;state.run=null;state.connectFrom=null;
+  if(state.demo && state.demo.boardId!==id)state.demo=null;
   state.view={x:60,y:65,scale:1};
   render();fitView();queueSave();
 }
@@ -112,6 +113,10 @@ function applyTransform(){
 }
 function renderStage(){
   const board=current();
+  $('stage').classList.toggle('is-connecting',!!state.connectFrom);
+  $('stage').classList.toggle('is-running',!!state.run);
+  $('connect-hint').hidden=!state.connectFrom;
+  if(!state.connectFrom)$('preview-edge').setAttribute('d','');
   $('empty-state').hidden=board.nodes.length>0;
   const layer=$('nodes-layer');layer.replaceChildren();
   board.nodes.forEach((node,index)=>{
@@ -147,7 +152,16 @@ function drawEdgeSvg(pathData,edge,active){
   const path=document.createElementNS(NS,'path');path.setAttribute('d',pathData);
   path.setAttribute('class',(state.selectedEdge===edge.id?'selected ':'')+(active?'active-path':''));
   path.setAttribute('marker-end',active?'url(#arrow-active)':'url(#arrowhead)');
-  const choose=e=>{e.stopPropagation();state.selectedEdge=edge.id;state.selected=null;state.connectFrom=null;render();};
+  const choose=e=>{
+    e.stopPropagation();
+    state.selectedEdge=edge.id;state.selected=null;state.connectFrom=null;
+    state.tab='details';state.inspectorOpen=true;
+    render();
+    requestAnimationFrame(()=>{
+      const field=$('edge-label-field');
+      if(field){field.focus();field.select();}
+    });
+  };
   hit.addEventListener('pointerdown',choose);path.addEventListener('pointerdown',choose);
   g.append(path,hit);
   if(edge.label){
@@ -204,6 +218,7 @@ function nodePointerDown(event,id){
 }
 function selectNode(id){
   state.selected=id;state.selectedEdge=null;
+  state.tab='details';
   if(!state.inspectorOpen)state.inspectorOpen=true;
   render();
 }
@@ -221,6 +236,25 @@ function connectNodes(from,to){
   state.connectFrom=null;state.selectedEdge=edge.id;state.selected=null;
   queueSave();render();notify('Connection created.');
 }
+function addNextStep(){
+  const b=current(),parent=byId(b,state.selected);
+  if(!parent || parent.type==='end' || parent.type==='note')return notify('Choose a Start, Process or Decision node first.',true);
+  const exits=outgoing(b,parent.id);
+  const x=parent.x+304;
+  let y=parent.y+(exits.length?exits.length*185:0);
+  while(b.nodes.some(n=>Math.abs(n.x-x)<NODE_W+30 && Math.abs(n.y-y)<NODE_H+28))y+=185;
+  record();
+  const child={id:uid('node'),type:'process',x,y,title:parent.type==='decision'?'New outcome':'Next step',detail:''};
+  const label=parent.type==='decision'?(exits.some(e=>(e.label||'').toLowerCase()==='yes')?'No':'Yes'):'';
+  b.nodes.push(child);
+  b.edges.push({id:uid('edge'),from:parent.id,to:child.id,label});
+  state.selected=child.id;state.selectedEdge=null;state.connectFrom=null;
+  state.tab='details';state.run=null;
+  queueSave();render();centerOnNode(child.id);
+  requestAnimationFrame(()=>{const field=$('node-title-field');if(field){field.focus();field.select();}});
+  notify('Next step added and connected. Give it a name.');
+}
+
 function screenToWorld(clientX,clientY){
   const rect=$('stage').getBoundingClientRect();
   return{x:(clientX-rect.left-state.view.x)/state.view.scale,y:(clientY-rect.top-state.view.y)/state.view.scale};
@@ -269,6 +303,16 @@ function fitView(overview=false){
   }
   const bounds=fitBounds(b.nodes,65);
   const zoom=Math.max(.28,Math.min(1.14,(rect.width-88)/bounds.width,(rect.height-115)/bounds.height));
+  if(!overview && zoom<.70 && b.nodes.length){
+    // An entirely visible 1,600px diagram becomes unreadably small in a real editor.
+    // Begin at a readable working zoom; the Fit All control still shows the overview.
+    const first=b.nodes.find(n=>n.type==='start')||b.nodes[0];
+    const readable=Math.min(.8,Math.max(.68,rect.width/1050));
+    state.view.scale=readable;
+    state.view.x=46-first.x*readable;
+    state.view.y=rect.height*.53-(first.y+NODE_H/2)*readable;
+    applyTransform();return;
+  }
   state.view.scale=zoom;
   state.view.x=(rect.width-bounds.width*zoom)/2-bounds.minX*zoom;
   state.view.y=(rect.height-bounds.height*zoom)/2-bounds.minY*zoom;
@@ -303,7 +347,9 @@ function renderInspector(){
         '<div class="detail-separator"></div>'+
         '<div class="field-group"><div class="field-label">CONNECT TO <span>Optional</span></div><select id="connect-select" class="field-select"><option value="">Select destination…</option>'+
         current().nodes.filter(n=>n.id!==node.id&&n.type!=='start'&&n.type!=='note'&&!connected(current(),node.id,n.id)).map(n=>'<option value="'+esc(n.id)+'">'+esc(n.title)+'</option>').join('')+'</select>'+
-        '<button class="button outline" data-action="connect-selected" style="margin-top:9px;width:100%" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('link')+' Add connection</button></div>'+
+        '<button class="button outline" data-action="connect-selected" style="margin-top:9px;width:100%" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('link')+' Connect to selected</button>'+
+        '<p style="font-size:10px;line-height:1.65;color:var(--muted);margin:10px 0 0">Tip: press <kbd>L</kbd> or drag the output ● to connect visually.</p></div>'+
+        '<button class="button primary" data-action="add-next" style="width:100%;margin-bottom:4px" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('plus')+' Add next step →</button>'+
         '<div class="detail-separator"></div><div class="inspector-actions"><button class="button outline" data-action="duplicate-node">'+icon('copy')+' Duplicate</button><button class="button outline" data-action="delete-selected">'+icon('trash')+' Delete</button></div>';
     } else if(edge){
       $('inspector-heading').textContent='Edit connection';
@@ -361,15 +407,18 @@ function startRun(){
   const b=current(),start=b.nodes.find(n=>n.type==='start');
   if(!start){state.tab='issues';state.inspectorOpen=true;render();return notify('Add a Start node before running.',true);}
   state.run={path:[start.id],edges:[]};state.connectFrom=null;state.selected=null;state.selectedEdge=null;
-  render();notify('Flow simulation started. Follow each step.');
+  render();centerOnNode(start.id);notify('Flow simulation started. Follow each step.');
 }
 function runCurrent(){return state.run?byId(current(),state.run.path[state.run.path.length-1]):null;}
 function takeEdge(id){
   const run=state.run,node=runCurrent();if(!run||!node)return;
   const edge=outgoing(current(),node.id).find(e=>e.id===id);if(!edge)return;
   if(run.path.length>=70)return notify('Simulation stopped after 70 steps to prevent an endless loop.',true);
-  run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();
-  if(runCurrent()?.type==='end')notify('Flow completed! You reached the end.');
+  run.edges.push(edge.id);run.path.push(edge.to);renderStage();renderSummary();centerOnNode(edge.to);
+  if(runCurrent()?.type==='end'){
+    if(state.demo && state.demo.boardId===state.activeId){state.demo.step=4;renderExperience();}
+    notify('Flow completed! You reached the end.');
+  }
 }
 function stepForward(){
   const node=runCurrent();if(!node)return;
@@ -381,9 +430,9 @@ function stepForward(){
 }
 function stepBack(){
   if(!state.run||state.run.path.length===1)return;
-  state.run.path.pop();state.run.edges.pop();renderStage();renderSummary();
+  state.run.path.pop();state.run.edges.pop();renderStage();renderSummary();centerOnNode(runCurrent()?.id);
 }
-function stopRun(){state.run=null;render();}
+function stopRun(){state.run=null;render();fitView();}
 function renderRunPanel(){
   const panel=$('run-panel');if(!state.run){panel.hidden=true;return;}
   const node=runCurrent();if(!node){panel.hidden=true;return;}
@@ -481,9 +530,136 @@ async function importJson(file){
   $('import-input').value='';
 }
 function setTab(name){state.tab=name;state.inspectorOpen=true;renderInspector();document.querySelector('.inspector').hidden=false;}
+
+/**
+ * A genuine three-step judge walkthrough. Every action operates on an editable
+ * copy of the graph, never on somebody's existing work.
+ */
+function startChallenge(){
+  const b=makeBoard('challenge','The broken launch');
+  state.boards.unshift(b);
+  state.activeId=b.id;
+  state.selected=null;
+  state.selectedEdge=null;
+  state.connectFrom=null;
+  state.run=null;
+  state.tab='details';
+  state.inspectorOpen=true;
+  state.experienceDismissed=false;
+  state.demo={boardId:b.id,step:0};
+  render();
+  fitView();
+  queueSave();
+  notify('A broken workflow is on your canvas. Find the missing paths.');
+}
+function inspectChallenge(){
+  if(!state.demo || state.demo.boardId!==state.activeId)return;
+  state.demo.step=1;
+  state.tab='issues';
+  state.inspectorOpen=true;
+  render();
+  fitView(true);
+  notify('Flow Inspector has identified the missing connections.');
+}
+function repairChallenge(){
+  if(!state.demo || state.demo.boardId!==state.activeId)return;
+  const b=current();
+  const needed=[
+    {from:'c',to:'e',label:'No'},
+    {from:'e',to:'f',label:''}
+  ].filter(e=>!connected(b,e.from,e.to));
+  if(needed.length){
+    record();
+    needed.forEach(e=>b.edges.push({id:uid('edge'),...e}));
+    queueSave();
+  }
+  state.demo.step=2;
+  state.tab='issues';
+  render();
+  fitView(true);
+  notify('The missing routes are now real graph connections. All paths lead to End.');
+}
+function runChallenge(){
+  if(!state.demo || state.demo.boardId!==state.activeId)return;
+  if(validateBoard(current()).errors){state.tab='issues';render();return notify('Repair the missing connections before running.',true);}
+  state.demo.step=3;
+  startRun();
+}
+function autoArrangeBoard(){
+  const b=current();
+  if(!b.nodes.length)return notify('Add some nodes to arrange first.');
+  record();
+  b.nodes=autoArrange(b);
+  state.run=null;
+  state.selected=null;
+  state.selectedEdge=null;
+  render();
+  fitView(window.innerWidth>=640);
+  queueSave();
+  notify('Nodes arranged by workflow order. Undo with Ctrl+Z.');
+}
+function renderExperience(){
+  const root=$('experience-card');
+  if(!root)return;
+  const inChallenge=state.demo && state.demo.boardId===state.activeId;
+  root.hidden=!!state.experienceDismissed;
+  if(root.hidden)return;
+  const close='<button class="demo-close" data-action="dismiss-experience" aria-label="Dismiss this guide" title="Dismiss">'+icon('x')+'</button>';
+  if(!inChallenge){
+    root.innerHTML=close+
+      '<div class="demo-eyebrow">A 45-SECOND PRODUCT TOUR</div>'+
+      '<h2 class="demo-title">From tangled ideas to a flow that works.</h2>'+
+      '<p class="demo-desc">Try a broken workflow. Spot its mistakes, connect the missing route, and watch your decision play out.</p>'+
+      '<div class="demo-buttons"><button class="button primary" data-action="challenge">'+icon('spark')+' Try the interactive demo</button></div>'+
+      '<p class="demo-note">Real editor. Real graph. No login, no payment, no sample-only features.</p>';
+    return;
+  }
+  const step=state.demo.step;
+  const steps='<div class="demo-progress" aria-label="Challenge progress">'+
+      [0,1,2].map(i=>'<span class="'+(step>=i+1?'done':'')+'"></span>').join('')+'</div>';
+  if(step===0){
+    root.innerHTML=close+'<div class="demo-eyebrow">STEP 1 OF 3 · DISCOVER</div>'+
+      '<h2 class="demo-title">Something is broken here.</h2>'+
+      '<p class="demo-desc">This launch process looks almost complete. One decision has no second route, and one step is stranded.</p>'+
+      steps+'<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Find the problems</button></div>'+
+      '<p class="demo-note">The Flow Inspector checks the actual graph.</p>';
+  }else if(step===1){
+    root.innerHTML=close+'<div class="demo-eyebrow">STEP 2 OF 3 · REPAIR</div>'+
+      '<h2 class="demo-title">The missing route is exposed.</h2>'+
+      '<p class="demo-desc">Check the issues on the right: the “No” branch is missing, and “Fix the blockers” leads nowhere.</p>'+
+      steps+'<div class="demo-buttons"><button class="button primary" data-action="repair-challenge">'+icon('link')+' Connect the broken paths</button></div>'+
+      '<p class="demo-note">You can also connect the nodes yourself using their circular handles.</p>';
+  }else if(step===2){
+    root.innerHTML=close+'<div class="demo-eyebrow">STEP 3 OF 3 · TEST</div>'+
+      '<h2 class="demo-title">Your flow is healthy. Now run it.</h2>'+
+      '<p class="demo-desc">Both Yes and No now lead to a complete outcome. Trace the logic from Start to End, one step at a time.</p>'+
+      steps+'<div class="demo-success">✓ No structural issues remain.</div>'+
+      '<div class="demo-buttons"><button class="button primary" data-action="run-challenge">'+icon('play')+' Run the real flow</button></div>';
+  }else if(step===3){
+    root.innerHTML=close+'<div class="demo-eyebrow">LIVE SIMULATION</div>'+
+      '<h2 class="demo-title">Watch every choice matter.</h2>'+
+      '<p class="demo-desc">Use Next step in the simulation panel. When you reach the decision, choose Yes or No to follow that branch.</p>'+
+      steps+'<div class="demo-buttons"><button class="button outline" data-action="stop-run">Pause & edit</button></div>';
+  }else{
+    root.innerHTML=close+'<div class="demo-eyebrow">CHALLENGE COMPLETED</div>'+
+      '<h2 class="demo-title">You just debugged a decision.</h2>'+
+      '<p class="demo-desc">That is BranchLab: draw the plan, catch its blind spots, and validate the outcome before it happens.</p>'+
+      steps+'<div class="demo-success">✓ Inspector clean · Path reached End</div>'+
+      '<div class="demo-buttons"><button class="button primary" data-action="templates">'+icon('plus')+' Make your own flow</button>'+
+      '<button class="button outline" data-action="dismiss-experience">Keep editing</button></div>';
+  }
+}
+
 function dispatchAction(action,el){
   $('menu-popover').hidden=true;
   switch(action){
+    case 'challenge':startChallenge();break;
+    case 'dismiss-experience':state.experienceDismissed=true;renderExperience();break;
+    case 'inspect-challenge':inspectChallenge();break;
+    case 'repair-challenge':repairChallenge();break;
+    case 'run-challenge':runChallenge();break;
+    case 'auto-arrange':autoArrangeBoard();break;
+    case 'add-next':addNextStep();break;
     case 'new-board':case 'templates':showTemplates();break;
     case 'add-first':addNode('start');break;
     case 'close-modal':document.querySelectorAll('dialog[open]').forEach(d=>d.close());break;
@@ -524,7 +700,7 @@ function bind(){
   $('stage').addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
   $('stage').addEventListener('drop',e=>{e.preventDefault();const type=e.dataTransfer.getData('text/plain');if(NODE_TYPES[type])addNode(type,screenToWorld(e.clientX,e.clientY));});
   $('stage').addEventListener('pointerdown',e=>{
-    if(e.button!==0 || e.target.closest('.node') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
+    if(e.button!==0 || e.target.closest('.node') || e.target.closest('.experience-card') || e.target.closest('#run-panel') || e.target.closest('.stage-controls') || e.target.closest('.empty-state') || e.target.closest('path'))return;
     if(state.connectFrom){state.connectFrom=null;render();return;}
     state.selected=null;state.selectedEdge=null;renderInspector();
     move={kind:'pan',x:e.clientX,y:e.clientY,viewX:state.view.x,viewY:state.view.y};
@@ -589,6 +765,17 @@ function bind(){
     if((e.key==='Delete'||e.key==='Backspace')&&(state.selected||state.selectedEdge)){e.preventDefault();deleteSelection();}
     if((e.key==='d'||e.key==='D')&&mod&&state.selected){e.preventDefault();duplicateNode();}
     if(e.key.toLowerCase()==='i'&&!mod){setTab('issues');}
+    if(e.key.toLowerCase()==='l'&&!mod&&state.selected){
+      const n=byId(current(),state.selected);
+      if(n&&n.type!=='end'&&n.type!=='note'){
+        state.connectFrom=n.id;render();notify('Choose a node to connect to. Esc cancels.');
+      }
+    }
+    if(e.key==='Enter'&&!mod){
+      const field=$(state.selected?'node-title-field':'edge-label-field');
+      if(field){e.preventDefault();field.focus();field.select();}
+    }
+    if(e.shiftKey&&e.key.toLowerCase()==='a'&&!mod){e.preventDefault();autoArrangeBoard();}
   });
   window.addEventListener('keyup',e=>{if(e.code==='Space')spaceHeld=false;});
   window.addEventListener('beforeunload',save);

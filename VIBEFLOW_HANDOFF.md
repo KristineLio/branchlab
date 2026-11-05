@@ -23,15 +23,31 @@
 >
 > Tell me the finished VibeFlow public URL when it is published.
 
+## Judge's first 45 seconds
+
+1. Open the actual VibeFlow public URL in a clean private browsing tab.
+2. A guided product card should appear on the canvas: **Try the interactive demo**.
+3. Click to open **The broken launch** (six nodes, four edges).
+4. Click **Find the problems**. The inspector flags an incomplete decision, a dead end, and an unreachable step.
+5. Click **Connect the broken paths**. Two real graph connections are created; health becomes 100, with no issues.
+6. Click **Run the real flow**. Advance through Request → Review → Decision, choose **No**, visit Fix the blockers, then reach Launch confirmed.
+7. Dismiss the guide. Select a node and press **Add next step** to extend the graph. Try **Auto-arrange**, undo and export.
+
+This judge demo is a working, editable board, not a scripted animation. It is intentionally designed to make the unique value obvious in less than one minute. It can be started from the app again by opening the **More** menu → **Try the flow challenge**.
+
 ## Production QA checklist
 
+- [ ] The first-use challenge card displays without covering the main controls.
+- [ ] The challenge completes fully in the live deployed app (see steps above).
 - [ ] The initial onboarding template renders: six nodes and six real connections.
 - [ ] Drag a node and see the lines follow it.
 - [ ] Drag or click a port to connect two nodes.
 - [ ] Rename a node, refresh the page, and confirm the edit persists.
 - [ ] Inspect a healthy flow and an intentionally disconnected node.
 - [ ] Run Flow from Start, choose Yes, and reach End.
-- [ ] Undo and redo edits and movement.
+- [ ] Undo and redo edits and movement; auto-arrange creates a reversible layout.
+- [ ] Select a node → **Add next step** creates a new editable node plus a connector.
+- [ ] Press `L` on a selected node to connect, and `Shift+A` to auto-arrange.
 - [ ] Create a second board from the templates gallery.
 - [ ] Export SVG, PNG and JSON; import the JSON backup.
 - [ ] Open the published portal URL on desktop and mobile, check browser console for errors.
@@ -41,7 +57,7 @@
 
 **BranchLab** — Make ideas move.  
 **Replaces:** Whimsical Pro — $12/month on the monthly Pro plan (verify current price before posting).  
-**Description:** A visual flowchart editor that goes beyond drawing: make and connect real diagrams, inspect dead ends and missing branches, interactively run Yes/No decision paths, and export SVG, PNG or JSON. No signup, no watermark, and your data stays in your browser.  
+**Description:** A visual flowchart editor that goes beyond drawing: build real diagrams, instantly inspect broken paths and incomplete decisions, **repair the flow**, test each Yes/No route in a live simulation, auto-arrange nodes, and export SVG, PNG or JSON. Try the 45-second interactive challenge! No signup, no watermark, and your data stays in your browser.  
 **Live app:** [insert working VibeFlow public URL]
 
 **Important:** Submitting the GitHub repository URL alone is not enough. The rules specifically require a functioning VibeFlow live link.
