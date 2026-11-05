@@ -707,27 +707,30 @@ function inspectChallenge(){
   fitView(true);
   notify('Flow Inspector has identified the missing connections.');
 }
+function challengeMissingLinks(board=current()){
+  return [{from:'c',to:'e',label:'No',text:'Ready to ship? → No → Fix the blockers'},
+    {from:'e',to:'f',label:'',text:'Fix the blockers → Launch confirmed'}]
+    .filter(e=>!connected(board,e.from,e.to));
+}
 function repairChallenge(){
   if(!state.demo || state.demo.boardId!==state.activeId)return;
-  const b=current();
-  const needed=[
-    {from:'c',to:'e',label:'No'},
-    {from:'e',to:'f',label:''}
-  ].filter(e=>!connected(b,e.from,e.to));
-  if(needed.length){
+  const b=current(),link=challengeMissingLinks(b)[0];
+  if(link){
     record();
-    needed.forEach(e=>b.edges.push({id:uid('edge'),...e}));
+    b.edges.push({id:uid('edge'),from:link.from,to:link.to,label:link.label});
     queueSave();
   }
-  state.demo.step=2;
-  state.tab='issues';
-  render();
-  fitView(true);
-  notify('The missing routes are now real graph connections. All paths lead to End.');
+  state.demo.step=challengeMissingLinks(b).length?1:2;
+  state.tab='issues';state.inspectorOpen=true;
+  render();fitView(true);
+  const issues=validateBoard(b).issues;
+  notify(challengeMissingLinks(b).length?'First connection restored. Add one more to finish the No path.':
+    issues.length?'Connections restored. Review the remaining structural issues.':
+    'Both links restored. The inspector now reports no structural issues.');
 }
 function runChallenge(){
   if(!state.demo || state.demo.boardId!==state.activeId)return;
-  if(validateBoard(current()).errors){state.tab='issues';render();return notify('Repair the missing connections before running.',true);}
+  if(validateBoard(current()).issues.length){state.tab='issues';render();return notify('Resolve the remaining structural issues before simulation.',true);}
   state.demo.step=3;
   startRun();
 }
@@ -750,49 +753,64 @@ function renderExperience(){
   const inChallenge=state.demo && state.demo.boardId===state.activeId;
   root.hidden=!!state.experienceDismissed;
   if(root.hidden)return;
-  const close='<button class="demo-close" data-action="dismiss-experience" aria-label="Dismiss this guide" title="Dismiss">'+icon('x')+'</button>';
+  const close='<button class="demo-close" data-action="dismiss-experience" aria-label="Dismiss guide" title="Dismiss">'+icon('x')+'</button>';
   if(!inChallenge){
     root.innerHTML=close+
-      '<div class="demo-eyebrow">WELCOME TO BRANCHLAB · FREE FLOWCHART EDITOR</div>'+
-      '<h2 class="demo-title">What would you like to create?</h2>'+
-      '<p class="demo-desc">Start a blank flow, adapt a real-world template, or discover how BranchLab checks your logic.</p>'+
-      '<div class="demo-buttons starter-choices"><button class="button primary" data-action="start-blank">'+icon('plus')+' Blank flow</button><button class="button outline" data-action="templates">'+icon('grid')+' Use template</button><button class="button outline" data-action="challenge">'+icon('play')+' Try interactive demo</button></div>'+
-      '<p class="demo-note">Real editor. Real graph. No login, no payment, no sample-only features.</p>';
+      '<div class="demo-eyebrow">WORKFLOWS YOU CAN ACTUALLY TRUST</div>'+
+      '<h2 class="demo-title">Find what your flowchart missed.</h2>'+
+      '<p class="demo-desc">Draw a process, catch broken decisions, test the outcome, and export the finished plan. No subscription or account.</p>'+
+      '<div class="demo-promise"><span>'+icon('search')+' Find</span><span>'+icon('link')+' Fix</span><span>'+icon('play')+' Test</span></div>'+
+      '<div class="demo-buttons starter-choices"><button class="button primary" data-action="challenge">'+icon('play')+' Try the 45-second demo</button><button class="button outline" data-action="templates">'+icon('grid')+' Start with a template</button><button class="button outline" data-action="start-blank">'+icon('plus')+' Blank board</button></div>'+
+      '<p class="demo-note">Every step is editable. Your own boards stay in your browser, with no watermark or paid export.</p>';
     return;
   }
   const step=state.demo.step;
-  const steps='<div class="demo-progress" aria-label="Challenge progress">'+
-      [0,1,2].map(i=>'<span class="'+(step>=i+1?'done':'')+'"></span>').join('')+'</div>';
+  const missing=challengeMissingLinks();
+  const audit=analyzeOutcomes(current());
+  const issues=validateBoard(current()).issues;
+  if(step===1 && !missing.length && !issues.length){
+    state.demo.step=2;
+    return renderExperience();
+  }
+  const progress='<div class="demo-progress" aria-label="Demo progress">'+
+    [0,1,2,3].map(i=>'<span class="'+(step>i?'done':'')+'"></span>').join('')+'</div>';
+  const stats='<div class="demo-metrics" aria-live="polite"><span><strong>'+issues.length+'</strong> structural issues</span>'+
+    '<span><strong>'+audit.covered+'/'+audit.total+'</strong> routes reach End</span></div>';
   if(step===0){
-    root.innerHTML=close+'<div class="demo-eyebrow">STEP 1 OF 3 · DISCOVER</div>'+
-      '<h2 class="demo-title">Something is broken here.</h2>'+
-      '<p class="demo-desc">This launch process looks almost complete. One decision has no second route, and one step is stranded.</p>'+
-      steps+'<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Find the problems</button></div>'+
-      '<p class="demo-note">The Flow Inspector checks the actual graph.</p>';
+    root.innerHTML=close+'<div class="demo-eyebrow">01 / 04 · FIND THE RISK</div>'+
+      '<h2 class="demo-title">Would you launch this workflow?</h2>'+
+      '<p class="demo-desc">A six-step release process looks finished, but the No decision has nowhere to go. Find out what the diagram hides.</p>'+
+      stats+progress+'<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Inspect the real flow →</button></div>'+
+      '<p class="demo-note">Uses exactly the same Flow Inspector as your own boards.</p>';
   }else if(step===1){
-    root.innerHTML=close+'<div class="demo-eyebrow">STEP 2 OF 3 · REPAIR</div>'+
-      '<h2 class="demo-title">The missing route is exposed.</h2>'+
-      '<p class="demo-desc">Check the issues on the right: the “No” branch is missing, and “Fix the blockers” leads nowhere.</p>'+
-      steps+'<div class="demo-buttons"><button class="button primary" data-action="repair-challenge">'+icon('link')+' Connect the broken paths</button></div>'+
-      '<p class="demo-note">You can also connect the nodes yourself using their circular handles.</p>';
+    const next=missing[0];
+    root.innerHTML=close+'<div class="demo-eyebrow">02 / 04 · FIX THE MISSING LINKS</div>'+
+      '<h2 class="demo-title">A decision without an outcome is a risk.</h2>'+
+      '<p class="demo-desc">Repair the graph one connection at a time. See the warnings update after every real edit.</p>'+
+      stats+progress+'<div class="demo-fix-target"><span>LINK TO RESTORE</span><strong>'+esc(next?.text||'Review remaining issues in the inspector')+'</strong></div>'+
+      (next?'<div class="demo-buttons"><button class="button primary" data-action="repair-challenge">'+icon('link')+' Connect this path →</button></div>':
+       '<div class="demo-buttons"><button class="button primary" data-action="inspect-challenge">'+icon('search')+' Review remaining issues</button></div>')+
+      '<p class="demo-note">'+(2-missing.length)+'/2 links restored. Or drag ports to connect them yourself.</p>';
   }else if(step===2){
-    root.innerHTML=close+'<div class="demo-eyebrow">STEP 3 OF 3 · TEST</div>'+
-      '<h2 class="demo-title">Your flow is healthy. Now run it.</h2>'+
-      '<p class="demo-desc">Both Yes and No now lead to a complete outcome. Trace the logic from Start to End, one step at a time.</p>'+
-      steps+'<div class="demo-success">✓ No structural issues remain.</div>'+
-      '<div class="demo-buttons"><button class="button primary" data-action="run-challenge">'+icon('play')+' Run the real flow</button></div>';
+    root.innerHTML=close+'<div class="demo-eyebrow">03 / 04 · TEST THE DECISION</div>'+
+      '<h2 class="demo-title">The flow is repaired. Does it work?</h2>'+
+      '<p class="demo-desc">Both Yes and No now lead toward an End. Simulate the No branch to confirm that blockers have a real outcome.</p>'+
+      stats+progress+(issues.length?'<div class="demo-warning">Fix '+issues.length+' issue(s) in Flow check before running.</div>':
+      '<div class="demo-success">✓ Inspector clean · Both routes reach an End</div>')+
+      '<div class="demo-buttons"><button class="button primary" data-action="run-challenge" '+(issues.length?'disabled':'')+'>'+icon('play')+' Simulate the No outcome →</button></div>';
   }else if(step===3){
-    root.innerHTML=close+'<div class="demo-eyebrow">LIVE SIMULATION</div>'+
-      '<h2 class="demo-title">Watch every choice matter.</h2>'+
-      '<p class="demo-desc">Use Next step in the simulation panel. When you reach the decision, choose Yes or No to follow that branch.</p>'+
-      steps+'<div class="demo-buttons"><button class="button outline" data-action="stop-run">Pause & edit</button></div>';
+    root.innerHTML=close+'<div class="demo-eyebrow">04 / 04 · TRACE THE OUTCOME</div>'+
+      '<h2 class="demo-title">Follow the No branch.</h2>'+
+      '<p class="demo-desc">Use Next step in the simulation panel. At “Ready to ship?” choose No, then follow Fix the blockers to Launch confirmed.</p>'+
+      stats+progress+'<div class="demo-buttons"><button class="button outline" data-action="stop-run">Pause & edit</button></div>';
   }else{
-    root.innerHTML=close+'<div class="demo-eyebrow">CHALLENGE COMPLETED</div>'+
-      '<h2 class="demo-title">You just debugged a decision.</h2>'+
-      '<p class="demo-desc">That is BranchLab: draw the plan, catch its blind spots, and validate the outcome before it happens.</p>'+
-      steps+'<div class="demo-success">✓ Inspector clean · Path reached End</div>'+
-      '<div class="demo-buttons"><button class="button primary" data-action="templates">'+icon('plus')+' Make your own flow</button>'+
-      '<button class="button outline" data-action="dismiss-experience">Keep editing</button></div>';
+    root.innerHTML=close+'<div class="demo-eyebrow">MISSION COMPLETE · USE IT FOR REAL WORK</div>'+
+      '<h2 class="demo-title">You caught a gap before launch.</h2>'+
+      '<p class="demo-desc">Two missing connectors were repaired, the No route was tested, and both outcomes now reach End. That is the difference between drawing and verifying a process.</p>'+
+      stats+progress+'<div class="demo-success">✓ Inspector clean · No path reaches the End safely</div>'.replace('No path reaches the End safely','Both outcomes reach End')+
+      '<div class="demo-buttons"><button class="button primary" data-action="export-pdf">'+icon('download')+' Export as PDF</button>'+
+      '<button class="button outline" data-action="templates">'+icon('plus')+' Make your own flow</button>'+
+      '<button class="button subtle" data-action="dismiss-experience">Keep editing</button></div>';
   }
 }
 
