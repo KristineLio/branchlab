@@ -22,7 +22,7 @@ export function getQuickStartStep(board){
   const coverage=analyzeOutcomes(board);
   const both=coverage.routes.filter(r=>r.decisionId===decision.id);
   if(both.length!==2||!both.every(r=>r.covered))return 'finish';
-  return board.quickStartChecked && validateBoard(board).issues.length===0?'done':'check';
+  return board.quickStartChecked?(validateBoard(board).issues.length===0?'done':'fix'):'check';
 }
 
 /**
