@@ -151,7 +151,16 @@ function drawEdgeSvg(pathData,edge,active){
   const path=document.createElementNS(NS,'path');path.setAttribute('d',pathData);
   path.setAttribute('class',(state.selectedEdge===edge.id?'selected ':'')+(active?'active-path':''));
   path.setAttribute('marker-end',active?'url(#arrow-active)':'url(#arrowhead)');
-  const choose=e=>{e.stopPropagation();state.selectedEdge=edge.id;state.selected=null;state.connectFrom=null;render();};
+  const choose=e=>{
+    e.stopPropagation();
+    state.selectedEdge=edge.id;state.selected=null;state.connectFrom=null;
+    state.tab='details';state.inspectorOpen=true;
+    render();
+    requestAnimationFrame(()=>{
+      const field=$('edge-label-field');
+      if(field){field.focus();field.select();}
+    });
+  };
   hit.addEventListener('pointerdown',choose);path.addEventListener('pointerdown',choose);
   g.append(path,hit);
   if(edge.label){
@@ -225,6 +234,25 @@ function connectNodes(from,to){
   state.connectFrom=null;state.selectedEdge=edge.id;state.selected=null;
   queueSave();render();notify('Connection created.');
 }
+function addNextStep(){
+  const b=current(),parent=byId(b,state.selected);
+  if(!parent || parent.type==='end' || parent.type==='note')return notify('Choose a Start, Process or Decision node first.',true);
+  const exits=outgoing(b,parent.id);
+  const x=parent.x+304;
+  let y=parent.y+(exits.length?exits.length*185:0);
+  while(b.nodes.some(n=>Math.abs(n.x-x)<NODE_W+30 && Math.abs(n.y-y)<NODE_H+28))y+=185;
+  record();
+  const child={id:uid('node'),type:'process',x,y,title:parent.type==='decision'?'New outcome':'Next step',detail:''};
+  const label=parent.type==='decision'?(exits.some(e=>(e.label||'').toLowerCase()==='yes')?'No':'Yes'):'';
+  b.nodes.push(child);
+  b.edges.push({id:uid('edge'),from:parent.id,to:child.id,label});
+  state.selected=child.id;state.selectedEdge=null;state.connectFrom=null;
+  state.tab='details';state.run=null;
+  queueSave();render();centerOnNode(child.id);
+  requestAnimationFrame(()=>{const field=$('node-title-field');if(field){field.focus();field.select();}});
+  notify('Next step added and connected. Give it a name.');
+}
+
 function screenToWorld(clientX,clientY){
   const rect=$('stage').getBoundingClientRect();
   return{x:(clientX-rect.left-state.view.x)/state.view.scale,y:(clientY-rect.top-state.view.y)/state.view.scale};
@@ -307,7 +335,9 @@ function renderInspector(){
         '<div class="detail-separator"></div>'+
         '<div class="field-group"><div class="field-label">CONNECT TO <span>Optional</span></div><select id="connect-select" class="field-select"><option value="">Select destination…</option>'+
         current().nodes.filter(n=>n.id!==node.id&&n.type!=='start'&&n.type!=='note'&&!connected(current(),node.id,n.id)).map(n=>'<option value="'+esc(n.id)+'">'+esc(n.title)+'</option>').join('')+'</select>'+
-        '<button class="button outline" data-action="connect-selected" style="margin-top:9px;width:100%" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('link')+' Add connection</button></div>'+
+        '<button class="button outline" data-action="connect-selected" style="margin-top:9px;width:100%" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('link')+' Connect to selected</button>'+
+        '<p style="font-size:10px;line-height:1.65;color:var(--muted);margin:10px 0 0">Tip: press <kbd>L</kbd> or drag the output ● to connect visually.</p></div>'+
+        '<button class="button primary" data-action="add-next" style="width:100%;margin-bottom:4px" '+((node.type==='end'||node.type==='note')?'disabled':'')+'>'+icon('plus')+' Add next step →</button>'+
         '<div class="detail-separator"></div><div class="inspector-actions"><button class="button outline" data-action="duplicate-node">'+icon('copy')+' Duplicate</button><button class="button outline" data-action="delete-selected">'+icon('trash')+' Delete</button></div>';
     } else if(edge){
       $('inspector-heading').textContent='Edit connection';
@@ -615,6 +645,7 @@ function dispatchAction(action,el){
     case 'repair-challenge':repairChallenge();break;
     case 'run-challenge':runChallenge();break;
     case 'auto-arrange':autoArrangeBoard();break;
+    case 'add-next':addNextStep();break;
     case 'new-board':case 'templates':showTemplates();break;
     case 'add-first':addNode('start');break;
     case 'close-modal':document.querySelectorAll('dialog[open]').forEach(d=>d.close());break;
