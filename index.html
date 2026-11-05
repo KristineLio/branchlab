@@ -90,6 +90,8 @@
         <div id="stage" class="stage" aria-label="Flowchart editing canvas" tabindex="0">
           <div class="grid-backdrop" id="grid-backdrop"></div>
           <div class="stage-hint"><span class="hint-circle"></span> YOUR CREATIVE CANVAS <span class="hint-dot">•</span> DRAG TO ARRANGE</div>
+          <section id="experience-card" class="experience-card" aria-label="Interactive BranchLab introduction"></section>
+          <div id="connect-hint" class="connect-hint" hidden aria-live="polite">Connecting… click another step, or press Esc to cancel.</div>
           <div id="world" class="world">
             <svg id="edge-layer" aria-label="Diagram connectors"><defs><marker id="arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="context-stroke"/></marker><marker id="arrow-active" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="#6259ed"/></marker></defs><g id="edge-paths"></g><path id="preview-edge" class="preview-edge" d="" fill="none"/></svg>
             <div id="nodes-layer"></div>
@@ -99,7 +101,7 @@
           <div id="run-panel" class="run-panel" hidden aria-live="polite"></div>
 
           <div class="stage-controls">
-            <div class="control-group"><button class="control-btn" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo"/></svg></button><button class="control-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg><use href="#i-redo"/></svg></button></div>
+            <div class="control-group"><button class="control-btn" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo"/></svg></button><button class="control-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg><use href="#i-redo"/></svg></button><button class="control-btn tidy-control" data-action="auto-arrange" title="Auto-arrange nodes (Shift+A)" aria-label="Auto-arrange nodes"><svg><use href="#i-grid"/></svg></button></div>
             <div class="control-group"><button class="control-btn" data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><button class="control-btn zoom-label" data-action="fit" id="zoom-label" title="Fit canvas">100%</button><button class="control-btn" data-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><button class="control-btn" data-action="fit" title="Fit all"><svg><use href="#i-zoom"/></svg></button></div>
           </div>
           <div class="stage-bottom-tip"><span>TIP</span> Select a node to edit · Drag the <b>●</b> output handle to connect · <kbd>Space</kbd> + drag to pan</div>
@@ -124,14 +126,16 @@
     <button data-action="import"><svg><use href="#i-upload"/></svg> Import JSON</button>
     <hr>
     <button data-action="duplicate-board"><svg><use href="#i-copy"/></svg> Duplicate board</button>
+    <button data-action="auto-arrange"><svg><use href="#i-grid"/></svg> Auto-arrange nodes</button>
+    <button data-action="challenge"><svg><use href="#i-spark"/></svg> Try the flow challenge</button>
     <button data-action="delete-board" class="danger-menu"><svg><use href="#i-trash"/></svg> Delete board</button>
     <hr>
     <button data-action="toggle-theme"><svg><use href="#i-moon"/></svg> Toggle appearance</button>
     <button data-action="help"><svg><use href="#i-help"/></svg> Keyboard shortcuts</button>
   </div>
 
-  <dialog id="templates-dialog" class="app-dialog" aria-labelledby="templates-heading"><div class="dialog-top"><div><span class="eyebrow">START WITH A LITTLE MOMENTUM</span><h2 id="templates-heading">Find your starting point.</h2><p>Four ways to turn a thought into something tangible.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div id="template-grid" class="template-grid"></div><div class="dialog-foot">Every template is editable. No sign-up, no limits, no strings attached.</div></dialog>
-  <dialog id="help-dialog" class="app-dialog compact-dialog" aria-labelledby="help-heading"><div class="dialog-top"><div><span class="eyebrow">A BETTER WAY TO THINK</span><h2 id="help-heading">You're in control.</h2><p>Everything you need to move around BranchLab.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div class="help-grid"><span>Drag a node</span><span>Move it on the canvas</span><span>Drag output ● to input ●</span><span>Connect two nodes</span><span><kbd>Delete</kbd> or <kbd>Backspace</kbd></span><span>Delete selection</span><span><kbd>Ctrl</kbd> + <kbd>Z</kbd></span><span>Undo</span><span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></span><span>Redo</span><span><kbd>Space</kbd> + drag</span><span>Pan canvas</span><span>Mouse wheel / trackpad</span><span>Pan canvas</span><span><kbd>Ctrl</kbd> + wheel</span><span>Zoom canvas</span><span><kbd>I</kbd></span><span>Open Flow Inspector</span><span><kbd>Esc</kbd></span><span>Cancel tool / run</span></div></dialog>
+  <dialog id="templates-dialog" class="app-dialog" aria-labelledby="templates-heading"><div class="dialog-top"><div><span class="eyebrow">START WITH A LITTLE MOMENTUM</span><h2 id="templates-heading">Find your starting point.</h2><p>Pick a template, or try a challenge that teaches you the editor in one minute.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div id="template-grid" class="template-grid"></div><div class="dialog-foot">Every template is editable. No sign-up, no limits, no strings attached.</div></dialog>
+  <dialog id="help-dialog" class="app-dialog compact-dialog" aria-labelledby="help-heading"><div class="dialog-top"><div><span class="eyebrow">A BETTER WAY TO THINK</span><h2 id="help-heading">You're in control.</h2><p>Everything you need to move around BranchLab.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div class="help-grid"><span>Drag a node</span><span>Move it on the canvas</span><span>Drag output ● to input ●</span><span>Connect two nodes</span><span><kbd>Delete</kbd> or <kbd>Backspace</kbd></span><span>Delete selection</span><span><kbd>Ctrl</kbd> + <kbd>Z</kbd></span><span>Undo</span><span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></span><span>Redo</span><span><kbd>Space</kbd> + drag</span><span>Pan canvas</span><span>Mouse wheel / trackpad</span><span>Pan canvas</span><span><kbd>Ctrl</kbd> + wheel</span><span>Zoom canvas</span><span><kbd>I</kbd></span><span>Open Flow Inspector</span><span><kbd>Esc</kbd></span><span>Cancel tool / run</span><span><kbd>L</kbd></span><span>Connect from selected step</span><span><kbd>Shift</kbd> + <kbd>A</kbd></span><span>Auto-arrange the diagram</span><span><kbd>Enter</kbd></span><span>Edit selected node / connection</span></div></dialog>
   <input id="import-input" type="file" accept=".json,application/json" hidden>
   <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
 </body>
