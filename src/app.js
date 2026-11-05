@@ -168,6 +168,11 @@ function renderEdges(){
 }
 function nodePointerDown(event,id){
   if(event.button!==0)return;
+  if(spaceHeld){
+    event.preventDefault();event.stopPropagation();
+    move={kind:'pan',x:event.clientX,y:event.clientY,viewX:state.view.x,viewY:state.view.y};
+    return;
+  }
   const button=event.target.closest('[data-node-action]');
   if(button){
     event.stopPropagation();event.preventDefault();
@@ -226,7 +231,16 @@ function addNode(type,position){
   const rect=$('stage').getBoundingClientRect();
   const center=position || screenToWorld(rect.left+rect.width/2,rect.top+rect.height/2);
   const labels={start:'Start here',process:'New process',decision:'Decision?',end:'Done!',note:'Remember this'};
-  const node={id:uid('node'),type,x:Math.round((center.x-NODE_W/2)/10)*10,y:Math.round((center.y-NODE_H/2)/10)*10,title:labels[type],detail:''};
+  let px=Math.round((center.x-NODE_W/2)/10)*10,py=Math.round((center.y-NODE_H/2)/10)*10;
+  if(!position){
+    const offsets=[[0,0],[0,165],[0,-165],[280,0],[-280,0],[280,165],[-280,165],[280,-165],[-280,-165],[0,330],[0,-330],[560,0],[-560,0]];
+    for(const [dx,dy] of offsets){
+      const x=px+dx,y=py+dy;
+      const collision=current().nodes.some(n=>Math.abs(n.x-x)<NODE_W+26&&Math.abs(n.y-y)<NODE_H+24);
+      if(!collision){px=x;py=y;break;}
+    }
+  }
+  const node={id:uid('node'),type,x:px,y:py,title:labels[type],detail:''};
   current().nodes.push(node);
   state.selected=node.id;state.selectedEdge=null;state.run=null;
   queueSave();render();notify(NODE_TYPES[type].label+' added to the canvas.');
