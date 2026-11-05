@@ -1,5 +1,5 @@
 import {TEMPLATES,makeBoard} from './templates.js';
-import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange,addDecisionBranches} from './graph.js';
+import {NODE_TYPES,NODE_W,NODE_H,uid,clone,outgoing,connected,validateBoard,normalizeBoard,fitBounds,autoArrange,addDecisionBranches,analyzeOutcomes} from './graph.js';
 import {jpegToPdf} from './pdf.js';
 
 const $=id=>document.getElementById(id);
@@ -11,7 +11,7 @@ const xml=esc;
 const byId=(board,id)=>board.nodes.find(n=>n.id===id);
 let boardData;
 let state={
-  boards:[],activeId:'',selected:null,selectedIds:[],selectedEdge:null,tab:'details',
+  boards:[],activeId:'',selected:null,selectedIds:[],selectedEdge:null,tab:'issues',
   inspectorOpen:true,connectFrom:null,run:null,demo:null,experienceDismissed:false,theme:'light',view:{x:80,y:65,scale:.85}
 };
 let move=null,spaceHeld=false,saveTimer=null,toastTimer=null;
@@ -28,6 +28,7 @@ function load(){
       const ids=new Set();state.boards=boards.filter(b=>{if(ids.has(b.id))return false;ids.add(b.id);return true;});
       state.activeId=state.boards.some(b=>b.id===raw.activeId)?raw.activeId:state.boards[0].id;
       state.theme=raw.theme==='dark'?'dark':'light';
+       state.experienceDismissed=raw.guideDismissed===true;
     }
   }catch(err){console.warn('Unable to restore workspace',err);}
   if(!state.boards.length){const board=makeBoard('signup');state.boards=[board];state.activeId=board.id;}
@@ -37,7 +38,7 @@ function load(){
 function save(){
   clearTimeout(saveTimer);
   try{
-    localStorage.setItem(STORE,JSON.stringify({version:1,boards:state.boards,activeId:state.activeId,theme:state.theme}));
+    localStorage.setItem(STORE,JSON.stringify({version:1,boards:state.boards,activeId:state.activeId,theme:state.theme,guideDismissed:state.experienceDismissed}));
     $('save-indicator').innerHTML='<span></span> Saved locally';
   }catch(err){
     $('save-indicator').textContent='Storage unavailable';
@@ -103,7 +104,8 @@ function switchBoard(id){
 function renderSummary(){
   const board=current(),check=validateBoard(board);
   $('node-summary').textContent=board.nodes.length+' nodes · '+board.edges.length+' connections';
-  $('validity-summary').textContent=check.errors?check.errors+' issue'+(check.errors===1?'':'s')+' to fix':check.warnings?check.warnings+' suggestion'+(check.warnings===1?'':'s'):'Flow looking good';
+  const audit=analyzeOutcomes(board);
+  $('validity-summary').textContent=check.errors?check.errors+' issue'+(check.errors===1?'':'s')+' to fix':check.warnings?check.warnings+' suggestion'+(check.warnings===1?'':'s'):audit.total?audit.covered+'/'+audit.total+' decision routes validated':'Flow looking good';
   $('issue-count').textContent=check.errors+check.warnings;
   $('bottom-status').textContent=state.connectFrom?'Select a destination node to connect':state.run?'Simulation is active':state.selected?'Node selected — edit in Properties':state.selectedEdge?'Connection selected':'Ready to create';
   $('zoom-label').textContent=Math.round(state.view.scale*100)+'%';
@@ -276,6 +278,16 @@ function addNextStep(){
   notify('Next step added and connected. Give it a name.');
 }
 
+function quickFixIssue(nodeId,fix){
+  const node=byId(current(),nodeId);
+  if(!node)return notify('That step no longer exists. Recheck the board.',true);
+  selectNode(nodeId);
+  if(fix==='branches'&&node.type==='decision')addDecisionPaths();
+  else if(fix==='next'&&node.type!=='end'&&node.type!=='note'){
+    addNextStep();
+    notify('Next step connected. Name it and continue toward your End step.');
+  }else notify('This issue needs a manual review.',true);
+}
 function addDecisionPaths(){
   const decision=byId(current(),state.selected);
   if(!decision || decision.type!=='decision')return notify('Choose a Decision step first.',true);
@@ -405,6 +417,8 @@ function zoom(factor,clientX,clientY){
 }
 function renderInspector(){
   const check=validateBoard(current());
+  const coverage=analyzeOutcomes(current());
+  const routeSummary=coverage.total?'<div class="route-coverage" role="status"><span>DECISION COVERAGE</span><strong>'+coverage.covered+' / '+coverage.total+' routes reach an End</strong><small>Checks named Yes and No routes, not whether business decisions are correct.</small></div>':'<div class="route-coverage"><span>DECISION COVERAGE</span><strong>No decisions yet</strong><small>Add a Decision to check both outcomes.</small></div>';
   $('issue-count').textContent=check.errors+check.warnings;
   document.querySelectorAll('.inspector-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===state.tab));
   $('details-tab').hidden=state.tab!=='details';$('issues-tab').hidden=state.tab!=='issues';
@@ -449,16 +463,28 @@ function renderInspector(){
   const issues=$('issues-tab');
   if(check.issues.length){
     issues.innerHTML='<div class="flow-score"><div><strong>Flow health</strong><p>'+check.errors+' errors · '+check.warnings+' suggestions</p></div><div class="score-number">'+Math.max(0,100-check.errors*20-check.warnings*8)+'</div></div>'+
-      '<p style="font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 15px">Fix these issues to make your flow easier to understand and run.</p>';
+      routeSummary+'<p style="font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 15px">Resolve these issues before sharing your flow.</p>';
     check.issues.forEach(issue=>{
+      const row=document.createElement('div');row.className='issue-row';
       const btn=document.createElement('button');btn.className='issue-item';btn.type='button';
-      btn.innerHTML='<span class="issue-head"><i class="'+esc(issue.severity)+'"></i>'+esc(issue.title)+'</span><p>'+esc(issue.description)+'</p>';
-      btn.onclick=()=>{if(issue.nodeId){state.selected=issue.nodeId;state.selectedEdge=null;state.tab='details';state.inspectorOpen=true;render();centerOnNode(issue.nodeId);}};
-      issues.append(btn);
+      btn.innerHTML='<span class="issue-head"><i class="'+esc(issue.severity)+'"></i>'+esc(issue.title)+'</span><p>'+esc(issue.description)+'</p><small class="issue-jump">'+(issue.nodeId?'View affected step →':'Review flow →')+'</small>';
+      btn.onclick=()=>{
+        if(issue.nodeId){state.selected=issue.nodeId;state.selectedIds=[issue.nodeId];state.selectedEdge=null;state.tab='details';state.inspectorOpen=true;render();centerOnNode(issue.nodeId);}
+      };
+      row.append(btn);
+      const inChallenge=state.demo?.boardId===state.activeId&&state.demo.step<4;
+      if(issue.nodeId&&!inChallenge&&(issue.title==='Incomplete decision'||issue.title==='Dead-end step')){
+        const fix=document.createElement('button');
+        fix.type='button';fix.className='issue-quick-fix';fix.dataset.action='quick-fix';
+        fix.dataset.node=issue.nodeId;fix.dataset.fix=issue.title==='Incomplete decision'?'branches':'next';
+        fix.textContent=issue.title==='Incomplete decision'?'Add missing Yes / No routes':'Add a linked next step';
+        row.append(fix);
+      }
+      issues.append(row);
     });
   }else{
     issues.innerHTML='<div class="flow-score"><div><strong>Flow health</strong><p>Everything is looking great.</p></div><div class="score-number">100</div></div>'+
-      '<div class="all-good"><div class="good-icon">✓</div><strong>All paths look healthy.</strong><p>No structural issues found. Time to see it in action.</p><button class="button primary" data-action="run">'+icon('play')+' Run this flow</button></div>';
+      routeSummary+'<div class="all-good"><div class="good-icon">✓</div><strong>All paths look healthy.</strong><p>No structural issues found. Time to see it in action.</p><button class="button primary" data-action="run">'+icon('play')+' Run this flow</button></div>';
   }
 }
 function centerOnNode(id){
