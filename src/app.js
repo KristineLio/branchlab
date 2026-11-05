@@ -258,8 +258,15 @@ function duplicateNode(){
   record();const copy={...node,id:uid('node'),x:node.x+42,y:node.y+155,title:node.title+' copy'};
   current().nodes.push(copy);state.selected=copy.id;queueSave();render();notify('Node duplicated.');
 }
-function fitView(){
+function fitView(overview=false){
   const rect=$('stage').getBoundingClientRect(),b=current();if(!rect.width||!rect.height)return;
+  if(rect.width<540 && b.nodes.length && !overview){
+    const first=b.nodes.find(n=>n.type==='start')||b.nodes[0];
+    state.view.scale=.75;
+    state.view.x=22-first.x*state.view.scale;
+    state.view.y=rect.height*.46-(first.y+NODE_H/2)*state.view.scale;
+    applyTransform();return;
+  }
   const bounds=fitBounds(b.nodes,65);
   const zoom=Math.max(.28,Math.min(1.14,(rect.width-88)/bounds.width,(rect.height-115)/bounds.height));
   state.view.scale=zoom;
@@ -490,7 +497,7 @@ function dispatchAction(action,el){
     case 'choose-edge':takeEdge(el.dataset.edge);break;
     case 'zoom-in':zoom(1.2);break;
     case 'zoom-out':zoom(1/1.2);break;
-    case 'fit':fitView();break;
+    case 'fit':fitView(true);break;
     case 'undo':undo();break;
     case 'redo':redo();break;
     case 'delete-selected':deleteSelection();break;
