@@ -45,6 +45,7 @@ button svg,.shape-preview svg,.toast svg{width:17px;height:17px;stroke:currentCo
 .mini-tip{background:#f5f4ff;border-radius:11px;padding:14px;position:relative;color:#41405f}
 body.dark .mini-tip{background:#2c2946;color:#e2defa}
 .tip-icon{height:27px;width:27px;background:#e7e4ff;border-radius:8px;color:#776de3;display:grid;place-items:center;margin-bottom:10px}
+.tip-icon svg{height:16px;width:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round;overflow:visible}
 .mini-tip strong{font-size:11px;display:block}.mini-tip p{font-size:10px;line-height:1.65;color:#89859e;margin:8px 0 10px}
 .link-button{padding:0;border:0;background:none;color:var(--accent-deep);font-weight:700;font-size:10px}.link-button span{font-size:13px;margin-left:3px}
 .sidebar-footer-btn{width:100%;display:flex;align-items:center;border:0;padding:15px 7px 3px;gap:10px;background:transparent;color:var(--text-secondary);font-weight:600;font-size:11px}.sidebar-footer-btn svg{width:16px;height:16px}.sidebar-footer-btn span{margin-left:auto;opacity:.5}
