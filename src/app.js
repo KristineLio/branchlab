@@ -327,6 +327,7 @@ function addNode(type,position){
   const node={id:uid('node'),type,x:px,y:py,title:labels[type],detail:''};
   current().nodes.push(node);
   state.selected=node.id;state.selectedEdge=null;state.run=null;
+  state.tab='details';state.inspectorOpen=true;
   queueSave();render();notify(NODE_TYPES[type].label+' added to the canvas.');
 }
 function deleteSelection(){
