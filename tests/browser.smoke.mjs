@@ -115,7 +115,7 @@ try{
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
   console.log('PASS complete first-minute product demonstration from bug to working flow');
 
-  await page.locator('.node[data-id="b"]').click({position:{x:90,y:70}});
+  await page.locator('.node[data-id="b"]').click();
   await page.locator('#details-tab [data-action="add-next"]').click();
   assert.equal(await page.locator('#nodes-layer .node').count(),7);
   assert.equal(await page.locator('#edge-paths g').count(),7);
