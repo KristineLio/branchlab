@@ -231,3 +231,102 @@ body.dark .demo-success{background:#284439;color:#9de2bf}
 .bulk-selection-summary strong{font:800 14px Manrope,Arial,sans-serif}
 .bulk-selection-summary p{color:var(--text-secondary);font-size:11px;line-height:1.65;margin:9px 0 0}
 .node.selected{outline:1px solid var(--accent);outline-offset:2px}
+
+/* Judge-friendly, understandable first-run journey. */
+.demo-promise{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:12px 0 15px}
+.demo-promise span{display:flex;align-items:center;justify-content:center;gap:5px;background:var(--accent-light);border-radius:7px;padding:9px 4px;color:var(--accent);font-size:10px;font-weight:800}
+.demo-promise svg{height:13px;width:13px}
+.demo-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0 8px}
+.demo-metrics span{display:flex;flex-direction:column;gap:4px;background:var(--panel-soft);border:1px solid var(--line);padding:10px;border-radius:8px;color:var(--muted);font-size:9px;line-height:1.35}
+.demo-metrics strong{color:var(--text);font:800 17px/1.1 Manrope,Arial,sans-serif}
+.demo-fix-target{background:var(--accent-light);border:1px solid var(--line-strong);border-radius:9px;padding:10px 11px;margin-bottom:11px}
+.demo-fix-target span{display:block;color:var(--accent);font-size:9px;font-weight:800;letter-spacing:.6px;margin-bottom:7px}
+.demo-fix-target strong{font-size:11px;color:var(--text);line-height:1.45}
+.demo-warning{background:#fff3df;color:#8b5c22;border-radius:7px;font-size:10px;font-weight:700;padding:9px 11px;margin:9px 0}
+body.dark .demo-warning{background:#453521;color:#ffe2a8}
+.route-coverage{border:1px solid var(--line);border-radius:10px;padding:12px;margin:-5px 0 16px;background:var(--panel-soft)}
+.route-coverage span{display:block;color:var(--accent);font-size:9px;letter-spacing:.65px;font-weight:800;margin-bottom:7px}
+.route-coverage strong{font:800 12px/1.4 Manrope,Arial,sans-serif;color:var(--text);display:block}
+.route-coverage small{display:block;font-size:9px;line-height:1.5;color:var(--muted);margin-top:6px}
+.issue-row{background:var(--panel-soft);border:1px solid var(--line);border-radius:9px;margin-bottom:10px;overflow:hidden}
+.issue-row .issue-item{border:0;border-radius:0;margin:0;background:transparent}
+.issue-row .issue-item:hover{background:var(--accent-light)}
+.issue-jump{display:block;margin-top:9px;font-size:9px;color:var(--accent);font-weight:700}
+.issue-quick-fix{display:block;width:calc(100% - 18px);margin:0 9px 9px;padding:9px;border:1px solid var(--line-strong);border-radius:6px;color:var(--accent);background:var(--panel);font-size:10px;font-weight:800;text-align:left;cursor:pointer}
+.issue-quick-fix:hover,.issue-quick-fix:focus-visible{background:var(--accent-light);border-color:var(--accent)}
+@media(max-width:640px){
+  .demo-metrics span{padding:7px;font-size:8px}
+  .demo-metrics strong{font-size:15px}
+  .demo-promise{margin:8px 0 11px}
+}
+
+/* The guided challenge becomes a compact, legible control deck above the diagram,
+ * instead of a tall panel hiding the workflow the user is supposed to inspect. */
+@media(min-width:901px){
+  .guided-demo .sidebar{width:72px}
+  .guided-demo .brand-row{padding:0 18px}
+  .guided-demo .brand-name,.guided-demo .brand-label,
+  .guided-demo .workspace-label div,.guided-demo .section-head,
+  .guided-demo .board-item span:not(.board-icon),
+  .guided-demo .palette-item>span:not(.shape-preview),
+  .guided-demo .palette-add,.guided-demo .mini-tip,
+  .guided-demo .sidebar-footer-btn{display:none}
+  .guided-demo .workspace-label{padding:20px}
+  .guided-demo .sidebar-section{padding:0 11px 10px}
+  .guided-demo .board-list{margin-top:20px}
+  .guided-demo .board-item{justify-content:center;padding:11px 5px}
+  .guided-demo .palette-item{justify-content:center}
+}
+.guided-demo .experience-card.is-challenge{
+  top:14px;left:18px;width:calc(100% - 36px);max-width:none;
+  padding:13px 18px;
+  display:grid;
+  grid-template-columns:minmax(200px,1fr) minmax(210px,270px);
+  column-gap:17px;row-gap:3px;
+  align-items:start;
+}
+.guided-demo .experience-card .demo-eyebrow{grid-column:1;grid-row:1}
+.guided-demo .experience-card .demo-title{grid-column:1;grid-row:2;margin:3px 0;font-size:15px}
+.guided-demo .experience-card .demo-desc{grid-column:1;grid-row:3;margin:0;font-size:10px;line-height:1.55}
+.guided-demo .experience-card .demo-metrics{grid-column:2;grid-row:1 / span 2;margin:0}
+.guided-demo .experience-card .demo-metrics span{padding:7px;font-size:9px}
+.guided-demo .experience-card .demo-metrics strong{font-size:16px}
+.guided-demo .experience-card .demo-progress{grid-column:2;grid-row:3;margin:7px 0 4px}
+.guided-demo .experience-card .demo-fix-target,
+.guided-demo .experience-card .demo-success,
+.guided-demo .experience-card .demo-warning{grid-column:1;grid-row:4;margin:5px 0 0}
+.guided-demo .experience-card .demo-fix-target{padding:8px 10px}
+.guided-demo .experience-card .demo-fix-target span{margin-bottom:3px}
+.guided-demo .experience-card .demo-buttons{grid-column:2;grid-row:4;justify-content:flex-end;align-self:center;margin-top:5px}
+.guided-demo .experience-card .demo-buttons .button{height:31px;font-size:10px;padding:0 10px}
+.guided-demo .experience-card .demo-note{grid-column:1 / -1;grid-row:5;margin:2px 0 0}
+.guided-demo .stage-hint{top:179px}
+.guided-demo-running .experience-card.is-challenge{
+  width:calc(100% - 382px);
+  max-height:180px;overflow:auto;
+  display:block;
+}
+.guided-demo-running .experience-card .demo-metrics,
+.guided-demo-running .experience-card .demo-progress,
+.guided-demo-running .experience-card .demo-note{display:none}
+.guided-demo-running .experience-card .demo-buttons{margin:9px 0 0;justify-content:flex-start}
+@media(max-width:1100px){
+  .guided-demo .experience-card.is-challenge{
+    display:block;top:9px;left:10px;width:calc(100% - 20px);
+    max-height:205px;overflow-y:auto;padding:11px 12px;
+  }
+  .guided-demo .experience-card .demo-metrics{margin:7px 0}
+  .guided-demo .experience-card .demo-progress{margin:7px 0}
+  .guided-demo .experience-card .demo-buttons{justify-content:flex-start;margin:7px 0 0}
+  .guided-demo .experience-card .demo-note{margin-top:5px}
+  .guided-demo-running .experience-card.is-challenge{width:calc(100% - 20px);max-height:170px}
+}
+@media(max-width:640px){
+  .guided-demo .experience-card.is-challenge{top:7px;left:7px;width:calc(100% - 14px);max-height:178px;padding:10px 11px}
+  .guided-demo .experience-card .demo-eyebrow{font-size:8px}
+  .guided-demo .experience-card .demo-title{font-size:12px}
+  .guided-demo .experience-card .demo-desc{font-size:9px}
+  .guided-demo .experience-card .demo-metrics{gap:5px}
+  .guided-demo .experience-card .demo-note{display:none}
+  .guided-demo .stage-hint{display:none}
+}

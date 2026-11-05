@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f7f5">
-  <meta name="description" content="BranchLab — the visual thinking workspace that lets you design, inspect and run your decision flows.">
+  <meta name="description" content="Build flowcharts for free, catch missing routes, simulate decisions, and export real SVG, PNG or PDF files—no account or subscription.">
   <title>BranchLab — Make ideas move.</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -67,7 +67,7 @@
         </div>
       </div>
       <div class="sidebar-bottom">
-        <div class="mini-tip"><span class="tip-icon"><svg><use href="#i-spark"/></svg></span><strong>Make something brilliant.</strong><p>Your ideas deserve more than another subscription.</p><button class="link-button" data-action="templates">Explore templates <span>↗</span></button></div>
+        <div class="mini-tip"><span class="tip-icon"><svg><use href="#i-spark"/></svg></span><strong>A flowchart that checks itself.</strong><p>Build the plan. Catch missing paths. Test the outcome.</p><button class="link-button" data-action="templates">Explore templates <span>↗</span></button></div>
         <button class="sidebar-footer-btn" data-action="help"><svg><use href="#i-help"/></svg> How to use BranchLab <span>?</span></button>
       </div>
     </aside>
@@ -79,7 +79,7 @@
           <button class="button subtle hide-mobile" type="button" data-action="templates"><svg><use href="#i-grid"/></svg> Templates</button>
           <button class="button subtle hide-mobile" type="button" data-action="import"><svg><use href="#i-upload"/></svg> Import</button>
           <div class="separator"></div>
-          <button class="button outline" type="button" id="inspect-button" data-action="inspect"><svg><use href="#i-search"/></svg> Inspect <span class="shortcut">I</span></button>
+          <button class="button outline" type="button" id="inspect-button" data-action="inspect" title="Check your workflow for missing steps and unfinished decisions"><svg><use href="#i-search"/></svg> Check flow <span class="shortcut">I</span></button>
           <button class="button primary" type="button" id="run-button" data-action="run"><svg><use href="#i-play"/></svg> Run flow</button>
           <button class="button outline export-button" type="button" data-action="menu" aria-label="Export diagram"><svg><use href="#i-download"/></svg> Export</button>
           <button class="icon-button top-more" data-action="menu" aria-label="More options" title="More options"><svg><use href="#i-more"/></svg></button>
@@ -90,7 +90,7 @@
       <div class="editor-layout">
         <div id="stage" class="stage" aria-label="Flowchart editing canvas" tabindex="0">
           <div class="grid-backdrop" id="grid-backdrop"></div>
-          <div class="stage-hint"><span class="hint-circle"></span> YOUR CREATIVE CANVAS <span class="hint-dot">•</span> DRAG TO ARRANGE</div>
+          <div class="stage-hint"><span class="hint-circle"></span> DRAW YOUR PLAN <span class="hint-dot">•</span> CHECK EVERY ROUTE <span class="hint-dot">•</span> TEST THE OUTCOME</div>
           <section id="experience-card" class="experience-card" aria-label="Interactive BranchLab introduction"></section>
           <div id="connect-hint" class="connect-hint" hidden aria-live="polite">Connecting… click another step, or press Esc to cancel.</div>
           <div id="world" class="world">
@@ -116,7 +116,7 @@
           <div class="inspector-footer"><div class="footer-symbol">✳</div><span>Thoughtfully designed to get out of your way.</span></div>
         </aside>
       </div>
-      <footer class="bottom-bar"><div><span class="status-spark">✳</span> <span id="bottom-status">Ready to create</span></div><div><span class="status-dot"></span> All changes stay in this browser <span class="bottom-divider"></span> v1.0</div></footer>
+      <footer class="bottom-bar"><div><span class="status-spark">✳</span> <span id="bottom-status">Ready to create</span></div><div><span class="status-dot"></span> All changes stay in this browser <span class="bottom-divider"></span> v1.1</div></footer>
     </main>
   </div>
 
@@ -131,14 +131,14 @@
     <button data-action="paste-node"><svg><use href="#i-plus"/></svg> Paste copied node</button>
     <button data-action="duplicate-board"><svg><use href="#i-copy"/></svg> Duplicate board</button>
     <button data-action="auto-arrange"><svg><use href="#i-grid"/></svg> Auto-arrange nodes</button>
-    <button data-action="challenge"><svg><use href="#i-spark"/></svg> Try the flow challenge</button>
+    <button data-action="challenge"><svg><use href="#i-spark"/></svg> 45-second guided demo</button>
     <button data-action="delete-board" class="danger-menu"><svg><use href="#i-trash"/></svg> Delete board</button>
     <hr>
     <button data-action="toggle-theme"><svg><use href="#i-moon"/></svg> Toggle appearance</button>
     <button data-action="help"><svg><use href="#i-help"/></svg> Keyboard shortcuts</button>
   </div>
 
-  <dialog id="templates-dialog" class="app-dialog" aria-labelledby="templates-heading"><div class="dialog-top"><div><span class="eyebrow">START WITH A LITTLE MOMENTUM</span><h2 id="templates-heading">Find your starting point.</h2><p>Pick a template, or try a challenge that teaches you the editor in one minute.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div id="template-grid" class="template-grid"></div><div class="dialog-foot">Every template is editable. No sign-up, no limits, no strings attached.</div></dialog>
+  <dialog id="templates-dialog" class="app-dialog" aria-labelledby="templates-heading"><div class="dialog-top"><div><span class="eyebrow">START WITH A LITTLE MOMENTUM</span><h2 id="templates-heading">Find your starting point.</h2><p>Start with a realistic, editable process. Use Check flow to find issues, then Run flow to test its decisions.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div id="template-grid" class="template-grid"></div><div class="dialog-foot">Every template is editable. No sign-up, no limits, no strings attached.</div></dialog>
   <dialog id="help-dialog" class="app-dialog compact-dialog" aria-labelledby="help-heading"><div class="dialog-top"><div><span class="eyebrow">A BETTER WAY TO THINK</span><h2 id="help-heading">You're in control.</h2><p>Everything you need to move around BranchLab.</p></div><button class="icon-button" data-action="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div><div class="help-grid"><span>Drag a node</span><span>Move it on the canvas</span><span>Drag output ● to input ●</span><span>Connect two nodes</span><span><kbd>Delete</kbd> or <kbd>Backspace</kbd></span><span>Delete selection</span><span><kbd>Ctrl</kbd> + <kbd>Z</kbd></span><span>Undo</span><span><kbd>Ctrl</kbd> + <kbd>C</kbd> / <kbd>V</kbd></span><span>Copy / paste selected nodes and connecting links</span><span><kbd>Shift</kbd> + click</span><span>Select more than one node, then drag as a group</span><span><kbd>Ctrl</kbd> + <kbd>A</kbd></span><span>Select all nodes in the board</span><span>Decision → Create Yes/No routes</span><span>Add both connected outcomes in one click</span><span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></span><span>Redo</span><span><kbd>Space</kbd> + drag</span><span>Pan canvas</span><span>Mouse wheel / trackpad</span><span>Pan canvas</span><span><kbd>Ctrl</kbd> + wheel</span><span>Zoom canvas</span><span><kbd>I</kbd></span><span>Open Flow Inspector</span><span><kbd>Esc</kbd></span><span>Cancel tool / run</span><span><kbd>L</kbd></span><span>Connect from selected step</span><span><kbd>Shift</kbd> + <kbd>A</kbd></span><span>Auto-arrange the diagram</span><span><kbd>Enter</kbd></span><span>Edit selected node / connection</span></div></dialog>
   <input id="import-input" type="file" accept=".json,application/json" hidden>
   <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>

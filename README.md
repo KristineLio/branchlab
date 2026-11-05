@@ -1,22 +1,27 @@
 # BranchLab
 
-**Design the flow. Test the logic. Export the result.**
+**Draw the plan. Find the missing paths. Test the outcome.**
 
 BranchLab is a privacy-friendly, offline-capable visual flowchart editor built for the SkyCastle **Cancel My Subscription** Hackathon (Nov 4–7, 2026). It replaces the personal flowchart design and export workflow of Whimsical Pro with a fast, no-account browser tool.
 
-**Core features:** drag-and-drop graph editor, one-click linked next steps, directional connections and labelled decisions, deterministic auto-arrange, Flow Inspector, interactive Run Flow simulation, prebuilt templates, multiple boards, local autosave, undo/redo, JSON import/export, SVG, PNG and **print-ready PDF exports**, and multi-node copy/paste that preserves connections between selected steps.
+**Core features:** drag-and-drop graph editor, one-click linked next steps, directional connections and labelled decisions, deterministic auto-arrange, **Flow Inspector with Yes/No route-to-End coverage and quick fixes**, interactive Run Flow simulation, prebuilt templates, multiple boards, local autosave, undo/redo, JSON import/export, SVG, PNG and **print-ready PDF exports**, and multi-node copy/paste that preserves connections between selected steps.
 
 **Stack:** semantic HTML, custom CSS, vanilla JavaScript ES modules. No account, backend, paid APIs or runtime library required. Optional web fonts fall back to system fonts when offline.
 
 ## Try the 45-second challenge
 
-Start with **Blank flow**, **Use template**, or **Try interactive demo** on the new first-use card. The interactive option teaches what makes BranchLab different:
+**Start here:** [Open the guided demo](https://kristinelio.github.io/branchlab/?demo=1). The `?demo=1` link works on static deployments, including a VibeFlow import with the same JavaScript; share the final **VibeFlow** URL with `?demo=1` in the contest, not GitHub Pages.
 
-1. Inspect a six-node launch workflow that has an incomplete decision, an unreachable task and a dead end.
-2. Repair missing links on a new editable demo board. Flow Inspector rechecks the actual graph instantly.
-3. Run the workflow, choose **No** at the decision, and follow it to a successful finish.
+The first-run card now highlights **Try the 45-second demo**, with Template and Blank as alternatives. The four-step story runs on real editable data:
 
-This is real user-editable graph data, not an animated promotional mockup. Afterward, select a node to add a linked step, or use the **Auto-arrange** button to tidy the board.
+1. **Find** — open a six-node launch workflow with three genuine structural issues. Inspect the actual diagram.
+2. **Fix** — press "Connect this path" twice. Each action adds **one** real edge, updates the warnings, and changes route coverage from **1/2** to **2/2** outcomes reaching an End.
+3. **Test** — simulate Start → Review → Decision, choose **No**, follow "Fix the blockers" to "Launch confirmed".
+4. **Share** — export the repaired flow to a printable PDF or open another editable template.
+
+This isn't a fake animated demo. It exercises the exact graph editor, conservative route checker, simulation, and export code available for personal diagrams. The Inspector now links to affected nodes and provides context-aware quick actions for incomplete decisions and dead ends. Note that **route coverage is a structural check, not a guarantee of real-world business correctness**.
+
+Closing the guide stays remembered across refreshes. The direct demo link deliberately creates a separate challenge board, preserving any previous workspace content.
 
 ### Useful shortcuts
 

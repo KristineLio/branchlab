@@ -12,7 +12,9 @@ try{
   assert.equal(await page.locator('#nodes-layer .node').count(),6,'Onboarding template should have six editable nodes');
   assert.equal(await page.locator('#edge-paths g').count(),6,'Onboarding should have six real connections');
   assert.equal((await page.locator('#issue-count').innerText()).trim(),'0','Initial flow should be healthy');
-  assert.equal(await page.locator('#experience-card .starter-choices button').count(),3,'New users can choose blank, template or guided demo');
+  assert.equal(await page.locator('#experience-card .starter-choices button').count(),3,'New users can choose guided demo, template or blank');
+  assert.ok(await page.locator('#experience-card').getByText('Try the 45-second demo').isVisible(),'Product value should be obvious from its first call to action');
+  assert.match(await page.locator('#issues-tab .route-coverage').innerText(),/2 \/ 2 routes reach an End/,'Both decision outcomes shown as covered');
   console.log('PASS initial workspace, three starter choices, six nodes, six connectors, clean validation');
 
   await page.locator('#run-button').click();
@@ -106,6 +108,14 @@ try{
   await page.setViewportSize({width:1440,height:900});
   await page.locator('#experience-card [data-action="challenge"]').click();
   await page.screenshot({path:'branchlab-challenge.png',fullPage:true});
+  const demoOverview=await page.evaluate(()=>{
+    const stage=document.querySelector('#stage').getBoundingClientRect();
+    return Array.from(document.querySelectorAll('#nodes-layer .node')).every(n=>{
+      const r=n.getBoundingClientRect();
+      return r.left>=stage.left-1&&r.right<=stage.right+1&&r.top>=stage.top-1&&r.bottom<=stage.bottom+1;
+    });
+  });
+  assert.equal(demoOverview,true,'Guided challenge should show every step in one full-flow overview');
   assert.equal(await page.locator('#nodes-layer .node').count(),6);
   assert.equal(await page.locator('#edge-paths g').count(),4);
   assert.equal(await page.locator('#issue-count').innerText(),'3');
@@ -113,9 +123,14 @@ try{
   await page.screenshot({path:'branchlab-inspection.png',fullPage:true});
   assert.ok(await page.locator('#issues-tab .issue-item').count()>=3);
   await page.locator('#experience-card [data-action="repair-challenge"]').click();
+  assert.equal(await page.locator('#edge-paths g').count(),5,'First action repairs just one real connector');
+  assert.equal((await page.evaluate(()=>window.BranchLabDebug.coverage())).covered,1,'A dead-end No route must not pass the coverage check');
+  assert.match(await page.locator('#experience-card .demo-fix-target').innerText(),/Fix the blockers/);
+  await page.locator('#experience-card [data-action="repair-challenge"]').click();
   await page.screenshot({path:'branchlab-repaired.png',fullPage:true});
   assert.equal(await page.locator('#edge-paths g').count(),6);
   assert.equal(await page.locator('#issue-count').innerText(),'0');
+  assert.equal((await page.evaluate(()=>window.BranchLabDebug.coverage())).covered,2);
   await page.locator('#experience-card [data-action="run-challenge"]').click();
   await page.locator('#run-panel [data-action="run-next"]').click();
   await page.locator('#run-panel [data-action="run-next"]').click();
@@ -123,10 +138,14 @@ try{
   await page.locator('#run-panel [data-action="choose-edge"]').filter({hasText:'No'}).click();
   assert.equal(await page.locator('.run-title').innerText(),'Fix the blockers');
   await page.locator('#run-panel [data-action="run-next"]').click();
-  assert.equal(await page.locator('.run-title').innerText(),'Launch confirmed');
-  assert.ok(await page.getByText('You just debugged a decision.').count());
+  assert.ok(await page.getByText('You caught a gap before launch.').count(),'The completion screen explains the real benefit');
+  assert.equal(await page.locator('#run-panel').isHidden(),true,'Guided completion collapses the simulation panel to reveal the full diagram');
+  assert.equal((await page.evaluate(()=>window.BranchLabDebug.state().run.path)).at(-1),'f','Simulation truly ended on the graph End node');
   await page.screenshot({path:'branchlab-complete.png',fullPage:true});
-  await page.locator('#run-panel [data-action="stop-run"]').last().click();
+  assert.match(await page.locator('#run-button').innerText(),/Run again/,'Toolbar should not claim simulation is still running');
+  await page.locator('#run-button').click();
+  assert.equal(await page.locator('#run-panel').isVisible(),true,'Completed demo is replayable');
+  await page.locator('#run-panel [data-action="stop-run"]').first().click();
   await page.locator('#experience-card [data-action="dismiss-experience"]').first().click();
   console.log('PASS complete first-minute product demonstration from bug to working flow');
 
@@ -203,6 +222,38 @@ try{
   assert.equal(await page.locator('#nodes-layer .node.selected').count(),2);
   console.log('PASS group copy/paste preserves connecting edges');
 
+
+
+  // A direct demo link opens a real challenge without overwriting previous work.
+  const isolated=await browser.newContext({viewport:{width:1440,height:900},acceptDownloads:true});
+  const quick=await isolated.newPage();
+  const quickErrors=[];
+  quick.on('pageerror',e=>quickErrors.push(e.message));
+  await quick.goto('http://127.0.0.1:8080/?demo=1',{waitUntil:'domcontentloaded'});
+  await quick.locator('#nodes-layer .node').first().waitFor();
+  assert.equal(await quick.locator('#edge-paths g').count(),4,'Direct link starts the broken challenge');
+  assert.equal(new URL(quick.url()).searchParams.has('demo'),false,'Demo param removed to avoid reopening on refresh');
+  assert.match(await quick.locator('#experience-card').innerText(),/Would you launch/);
+
+  await quick.locator('#experience-card [data-action="dismiss-experience"]').click();
+  await quick.waitForTimeout(450);
+  await quick.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await quick.locator('#experience-card').isHidden(),true,'Dismissed guide must stay dismissed after reload');
+  console.log('PASS direct demo link and remembered guide preference');
+
+  // Outside the guided challenge, Inspector issues provide real, editable fixes.
+  await quick.locator('.palette-item[data-type="decision"]').click();
+  const addedDecision=(await quick.evaluate(()=>window.BranchLabDebug.getBoard())).nodes.at(-1).id;
+  await quick.locator('#inspect-button').click();
+  const fix=quick.locator('#issues-tab [data-action="quick-fix"][data-fix="branches"][data-node="'+addedDecision+'"]');
+  await fix.click();
+  const quickBoard=await quick.evaluate(()=>window.BranchLabDebug.getBoard());
+  assert.deepEqual(quickBoard.edges.filter(e=>e.from===addedDecision).map(e=>e.label),['Yes','No'],
+    'Quick fix creates connected Yes and No outcomes on the real board');
+  assert.ok(quickBoard.nodes.some(n=>n.title.startsWith('No — next step')));
+  assert.deepEqual(quickErrors,[]);
+  await isolated.close();
+  console.log('PASS actionable Inspector quick-fix creates real graph edges');
 
   assert.deepEqual(errors,[],'No uncaught JavaScript errors');
   console.log('PASS No uncaught browser JavaScript exceptions');
