@@ -391,6 +391,17 @@ function pasteNode(){
 
 function fitView(overview=false){
   const rect=$('stage').getBoundingClientRect(),b=current();if(!rect.width||!rect.height)return;
+  const guided=!!b.quickStart&&!state.demo&&!state.run;
+  const topInset=guided?Math.min(rect.height*.40,rect.width<540?220:300):0;
+  const availableHeight=rect.height-topInset;
+  if(guided && rect.width<540 && b.nodes.length && !overview){
+    const focus=byId(b,state.selected)||b.nodes.find(n=>n.type==='start')||b.nodes[0];
+    const scale=.73;
+    state.view.scale=scale;
+    state.view.x=25-focus.x*scale;
+    state.view.y=topInset+availableHeight*.45-(focus.y+NODE_H/2)*scale;
+    applyTransform();return;
+  }
   if(rect.width<540 && b.nodes.length && !overview){
     const first=b.nodes.find(n=>n.type==='start')||b.nodes[0];
     state.view.scale=.75;
@@ -399,7 +410,7 @@ function fitView(overview=false){
     applyTransform();return;
   }
   const bounds=fitBounds(b.nodes,65);
-  const zoom=Math.max(.28,Math.min(1.14,(rect.width-88)/bounds.width,(rect.height-115)/bounds.height));
+  const zoom=Math.max(guided?.18:.28,Math.min(1.14,(rect.width-88)/bounds.width,(availableHeight-105)/bounds.height));
   if(!overview && zoom<.70 && b.nodes.length){
     // An entirely visible 1,600px diagram becomes unreadably small in a real editor.
     // Begin at a readable working zoom; the Fit All control still shows the overview.
@@ -412,7 +423,7 @@ function fitView(overview=false){
   }
   state.view.scale=zoom;
   state.view.x=(rect.width-bounds.width*zoom)/2-bounds.minX*zoom;
-  state.view.y=(rect.height-bounds.height*zoom)/2-bounds.minY*zoom;
+  state.view.y=topInset+(availableHeight-bounds.height*zoom)/2-bounds.minY*zoom;
   applyTransform();
 }
 function zoom(factor,clientX,clientY){
@@ -767,7 +778,7 @@ function advanceBeginnerFlow(){
     state.selectedIds=state.selected?[state.selected]:[];
     state.tab='details';
   }
-  queueSave();render();fitView(board.nodes.length>=5);
+  queueSave();render();fitView(window.innerWidth>=640);
   notify(result.message);
 }
 function dismissBeginnerFlow(){
