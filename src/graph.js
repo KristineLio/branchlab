@@ -91,7 +91,7 @@ export function normalizeBoard(raw) {
   if(raw.nodes.length>600 || raw.edges.length>1200) throw new Error('This board is too large to import.');
   const ids = new Set();
   const nodes = raw.nodes.map(n=>{
-    if(!n || typeof n.id!=='string' || !NODE_TYPES[n.type] || ids.has(n.id)) throw new Error('Invalid or repeated node.');
+    if(!n || typeof n.id!=='string' || n.id.length>80 || !NODE_TYPES[n.type] || ids.has(n.id)) throw new Error('Invalid or repeated node.');
     ids.add(n.id);
     return {id:n.id.slice(0,80),type:n.type,x:within(n.x,-10000,10000),y:within(n.y,-10000,10000),
       title:String(n.title||NODE_TYPES[n.type].label).slice(0,100),
@@ -99,7 +99,7 @@ export function normalizeBoard(raw) {
   });
   const edgeIds = new Set();
   const edges = raw.edges.map(e=>{
-    if(!e || typeof e.id!=='string'||edgeIds.has(e.id)||!ids.has(e.from)||!ids.has(e.to)||e.from===e.to) throw new Error('Invalid connector.');
+    if(!e || typeof e.id!=='string'||e.id.length>80||edgeIds.has(e.id)||!ids.has(e.from)||!ids.has(e.to)||e.from===e.to) throw new Error('Invalid connector.');
     edgeIds.add(e.id);
     return {id:e.id.slice(0,80),from:e.from,to:e.to,label:String(e.label||'').slice(0,40)};
   });
